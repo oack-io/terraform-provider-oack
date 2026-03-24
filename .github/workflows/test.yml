@@ -1,4 +1,4 @@
-name: Test
+name: CI
 
 on:
   push:
@@ -7,7 +7,21 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          args: --tests=false ./...
+
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,3 +38,6 @@ jobs:
 
       - name: Unit tests
         run: go test ./... -count=1
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
