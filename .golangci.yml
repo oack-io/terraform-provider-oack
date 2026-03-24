@@ -15,6 +15,14 @@ linters:
     - exhaustive
     - copyloopvar
     - intrange
+    - gosec
+    - bodyclose
+    - nolintlint
+    - usestdlibvars
+    - nakedret
+    - whitespace
+    - durationcheck
+    - unparam
   exclusions:
     rules:
       - path: _test\.go
@@ -37,7 +45,7 @@ linters:
 
 formatters:
   enable:
-    - gofmt
+    - goimports
 
 output:
   sort-order:

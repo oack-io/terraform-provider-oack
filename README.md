@@ -1,5 +1,12 @@
 # Terraform Provider for Oack
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/oack-io/terraform-provider-oack)](https://goreportcard.com/report/github.com/oack-io/terraform-provider-oack)
+[![CI](https://github.com/oack-io/terraform-provider-oack/actions/workflows/test.yml/badge.svg)](https://github.com/oack-io/terraform-provider-oack/actions/workflows/test.yml)
+[![Release](https://img.shields.io/github/v/release/oack-io/terraform-provider-oack)](https://github.com/oack-io/terraform-provider-oack/releases)
+[![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-blue.svg)](https://opensource.org/licenses/MPL-2.0)
+[![Go Reference](https://pkg.go.dev/badge/github.com/oack-io/terraform-provider-oack.svg)](https://pkg.go.dev/github.com/oack-io/terraform-provider-oack)
+[![Terraform Registry](https://img.shields.io/badge/terraform-registry-blueviolet)](https://registry.terraform.io/providers/oack-io/oack)
+
 The Oack provider enables [Terraform](https://www.terraform.io) to manage
 [Oack](https://oack.io) uptime monitoring infrastructure as code: monitors,
 alert channels, status pages, and more.
