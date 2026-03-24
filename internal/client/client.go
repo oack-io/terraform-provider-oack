@@ -53,7 +53,7 @@ func (c *Client) do(ctx context.Context, method, path string, body any) ([]byte,
 	if err != nil {
 		return nil, 0, fmt.Errorf("send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -176,58 +176,58 @@ func (c *Client) ListTeams(ctx context.Context) ([]Team, error) {
 // ── Monitors ─────────────────────────────────────────────────────────────────
 
 type Monitor struct {
-	ID                    string            `json:"id"`
-	TeamID                string            `json:"team_id"`
-	Name                  string            `json:"name"`
-	URL                   string            `json:"url"`
-	Status                string            `json:"status"`
-	TimeoutMs             int64             `json:"timeout_ms"`
-	CheckIntervalMs       int64             `json:"check_interval_ms"`
-	HTTPMethod            string            `json:"http_method"`
-	HTTPVersion           string            `json:"http_version"`
-	Headers               map[string]string `json:"headers"`
-	FollowRedirects       bool              `json:"follow_redirects"`
-	AllowedStatusCodes    []string          `json:"allowed_status_codes"`
-	FailureThreshold      int               `json:"failure_threshold"`
-	LatencyThresholdMs    int               `json:"latency_threshold_ms"`
-	SSLExpiryEnabled      bool              `json:"ssl_expiry_enabled"`
-	SSLExpiryThresholds   []int             `json:"ssl_expiry_thresholds"`
-	DomainExpiryEnabled   bool              `json:"domain_expiry_enabled"`
-	DomainExpiryThresholds []int            `json:"domain_expiry_thresholds"`
-	UptimeThresholdGood   float64           `json:"uptime_threshold_good"`
-	UptimeThresholdDegraded float64         `json:"uptime_threshold_degraded"`
-	UptimeThresholdCritical float64         `json:"uptime_threshold_critical"`
-	CheckerRegion         string            `json:"checker_region"`
-	CheckerCountry        string            `json:"checker_country"`
-	ResolveOverrideIP     string            `json:"resolve_override_ip"`
-	HealthStatus          string            `json:"health_status"`
-	CreatedAt             string            `json:"created_at"`
-	UpdatedAt             string            `json:"updated_at"`
+	ID                      string            `json:"id"`
+	TeamID                  string            `json:"team_id"`
+	Name                    string            `json:"name"`
+	URL                     string            `json:"url"`
+	Status                  string            `json:"status"`
+	TimeoutMs               int64             `json:"timeout_ms"`
+	CheckIntervalMs         int64             `json:"check_interval_ms"`
+	HTTPMethod              string            `json:"http_method"`
+	HTTPVersion             string            `json:"http_version"`
+	Headers                 map[string]string `json:"headers"`
+	FollowRedirects         bool              `json:"follow_redirects"`
+	AllowedStatusCodes      []string          `json:"allowed_status_codes"`
+	FailureThreshold        int               `json:"failure_threshold"`
+	LatencyThresholdMs      int               `json:"latency_threshold_ms"`
+	SSLExpiryEnabled        bool              `json:"ssl_expiry_enabled"`
+	SSLExpiryThresholds     []int             `json:"ssl_expiry_thresholds"`
+	DomainExpiryEnabled     bool              `json:"domain_expiry_enabled"`
+	DomainExpiryThresholds  []int             `json:"domain_expiry_thresholds"`
+	UptimeThresholdGood     float64           `json:"uptime_threshold_good"`
+	UptimeThresholdDegraded float64           `json:"uptime_threshold_degraded"`
+	UptimeThresholdCritical float64           `json:"uptime_threshold_critical"`
+	CheckerRegion           string            `json:"checker_region"`
+	CheckerCountry          string            `json:"checker_country"`
+	ResolveOverrideIP       string            `json:"resolve_override_ip"`
+	HealthStatus            string            `json:"health_status"`
+	CreatedAt               string            `json:"created_at"`
+	UpdatedAt               string            `json:"updated_at"`
 }
 
 type CreateMonitorRequest struct {
-	Name                   string            `json:"name"`
-	URL                    string            `json:"url"`
-	CheckIntervalMs        int64             `json:"check_interval_ms,omitempty"`
-	TimeoutMs              int64             `json:"timeout_ms,omitempty"`
-	HTTPMethod             string            `json:"http_method,omitempty"`
-	HTTPVersion            string            `json:"http_version,omitempty"`
-	Headers                map[string]string `json:"headers,omitempty"`
-	FollowRedirects        *bool             `json:"follow_redirects,omitempty"`
-	AllowedStatusCodes     []string          `json:"allowed_status_codes,omitempty"`
-	FailureThreshold       int               `json:"failure_threshold,omitempty"`
-	LatencyThresholdMs     int               `json:"latency_threshold_ms,omitempty"`
-	SSLExpiryEnabled       *bool             `json:"ssl_expiry_enabled,omitempty"`
-	SSLExpiryThresholds    []int             `json:"ssl_expiry_thresholds,omitempty"`
-	DomainExpiryEnabled    *bool             `json:"domain_expiry_enabled,omitempty"`
-	DomainExpiryThresholds []int             `json:"domain_expiry_thresholds,omitempty"`
-	UptimeThresholdGood    *float64          `json:"uptime_threshold_good,omitempty"`
-	UptimeThresholdDegraded *float64         `json:"uptime_threshold_degraded,omitempty"`
-	UptimeThresholdCritical *float64         `json:"uptime_threshold_critical,omitempty"`
-	CheckerRegion          string            `json:"checker_region,omitempty"`
-	CheckerCountry         string            `json:"checker_country,omitempty"`
-	ResolveOverrideIP      string            `json:"resolve_override_ip,omitempty"`
-	Status                 string            `json:"status,omitempty"`
+	Name                    string            `json:"name"`
+	URL                     string            `json:"url"`
+	CheckIntervalMs         int64             `json:"check_interval_ms,omitempty"`
+	TimeoutMs               int64             `json:"timeout_ms,omitempty"`
+	HTTPMethod              string            `json:"http_method,omitempty"`
+	HTTPVersion             string            `json:"http_version,omitempty"`
+	Headers                 map[string]string `json:"headers,omitempty"`
+	FollowRedirects         *bool             `json:"follow_redirects,omitempty"`
+	AllowedStatusCodes      []string          `json:"allowed_status_codes,omitempty"`
+	FailureThreshold        int               `json:"failure_threshold,omitempty"`
+	LatencyThresholdMs      int               `json:"latency_threshold_ms,omitempty"`
+	SSLExpiryEnabled        *bool             `json:"ssl_expiry_enabled,omitempty"`
+	SSLExpiryThresholds     []int             `json:"ssl_expiry_thresholds,omitempty"`
+	DomainExpiryEnabled     *bool             `json:"domain_expiry_enabled,omitempty"`
+	DomainExpiryThresholds  []int             `json:"domain_expiry_thresholds,omitempty"`
+	UptimeThresholdGood     *float64          `json:"uptime_threshold_good,omitempty"`
+	UptimeThresholdDegraded *float64          `json:"uptime_threshold_degraded,omitempty"`
+	UptimeThresholdCritical *float64          `json:"uptime_threshold_critical,omitempty"`
+	CheckerRegion           string            `json:"checker_region,omitempty"`
+	CheckerCountry          string            `json:"checker_country,omitempty"`
+	ResolveOverrideIP       string            `json:"resolve_override_ip,omitempty"`
+	Status                  string            `json:"status,omitempty"`
 }
 
 func (c *Client) CreateMonitor(ctx context.Context, teamID string, req *CreateMonitorRequest) (*Monitor, error) {
@@ -300,7 +300,7 @@ type Checker struct {
 	Region  string `json:"region"`
 	Country string `json:"country"`
 	IP      string `json:"ip"`
-	ASN     string `json:"asn"`
+	ASN     any    `json:"asn"`
 	Mode    string `json:"mode"`
 	Status  string `json:"status"`
 }
@@ -421,7 +421,7 @@ func (c *Client) DeleteAlertChannel(ctx context.Context, teamID, channelID strin
 
 func (c *Client) LinkMonitorChannel(ctx context.Context, teamID, monitorID, channelID string) error {
 	body, status, err := c.do(ctx, http.MethodPost,
-		"/api/v1/teams/"+teamID+"/monitors/"+monitorID+"/channels/"+channelID, nil)
+		"/api/v1/teams/"+teamID+"/monitors/"+monitorID+"/alert-channels/"+channelID, nil)
 	if err != nil {
 		return err
 	}
@@ -433,7 +433,7 @@ func (c *Client) LinkMonitorChannel(ctx context.Context, teamID, monitorID, chan
 
 func (c *Client) UnlinkMonitorChannel(ctx context.Context, teamID, monitorID, channelID string) error {
 	body, status, err := c.do(ctx, http.MethodDelete,
-		"/api/v1/teams/"+teamID+"/monitors/"+monitorID+"/channels/"+channelID, nil)
+		"/api/v1/teams/"+teamID+"/monitors/"+monitorID+"/alert-channels/"+channelID, nil)
 	if err != nil {
 		return err
 	}
@@ -449,7 +449,7 @@ type MonitorChannelsResponse struct {
 
 func (c *Client) ListMonitorChannels(ctx context.Context, teamID, monitorID string) ([]string, error) {
 	body, status, err := c.do(ctx, http.MethodGet,
-		"/api/v1/teams/"+teamID+"/monitors/"+monitorID+"/channels", nil)
+		"/api/v1/teams/"+teamID+"/monitors/"+monitorID+"/alert-channels", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -647,16 +647,16 @@ func (c *Client) DeleteComponentGroup(ctx context.Context, pageID, groupID strin
 // ── Status Page Components ───────────────────────────────────────────────────
 
 type Component struct {
-	ID           string `json:"id"`
-	StatusPageID string `json:"status_page_id"`
-	GroupID      string `json:"group_id"`
-	Name         string `json:"name"`
-	Description  string `json:"description"`
-	Status       string `json:"status"`
-	DisplayUptime bool  `json:"display_uptime"`
-	Position     int    `json:"position"`
-	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
+	ID            string `json:"id"`
+	StatusPageID  string `json:"status_page_id"`
+	GroupID       string `json:"group_id"`
+	Name          string `json:"name"`
+	Description   string `json:"description"`
+	Status        string `json:"status"`
+	DisplayUptime bool   `json:"display_uptime"`
+	Position      int    `json:"position"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
 }
 
 type CreateComponentRequest struct {

@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	_ resource.Resource              = &TeamResource{}
+	_ resource.Resource                = &TeamResource{}
 	_ resource.ResourceWithImportState = &TeamResource{}
 )
 

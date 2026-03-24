@@ -11,8 +11,8 @@ import (
 
 func TestAccComponentGroup_basic(t *testing.T) {
 	ts := time.Now().UnixNano()
-	pageName := fmt.Sprintf("tf-test-page-%d", ts)
-	pageSlug := fmt.Sprintf("tf-test-cg-%d", ts)
+	pageName := fmt.Sprintf("tf-test-%d-status", ts)
+	pageSlug := fmt.Sprintf("tf-test-cg-%d-status", ts)
 	groupName := fmt.Sprintf("tf-test-group-%d", ts)
 
 	resource.Test(t, resource.TestCase{
@@ -49,8 +49,8 @@ func TestAccComponentGroup_basic(t *testing.T) {
 
 func TestAccComponentGroup_import(t *testing.T) {
 	ts := time.Now().UnixNano()
-	pageName := fmt.Sprintf("tf-test-page-%d", ts)
-	pageSlug := fmt.Sprintf("tf-test-cgi-%d", ts)
+	pageName := fmt.Sprintf("tf-test-%d-status", ts)
+	pageSlug := fmt.Sprintf("tf-test-cgi-%d-status", ts)
 	groupName := fmt.Sprintf("tf-test-group-%d", ts)
 
 	resource.Test(t, resource.TestCase{

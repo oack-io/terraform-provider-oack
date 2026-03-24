@@ -84,12 +84,13 @@ func (d *CheckersDataSource) Read(ctx context.Context, _ datasource.ReadRequest,
 
 	var state CheckersDataSourceModel
 	for _, c := range checkers {
+		asn := fmt.Sprintf("%v", c.ASN)
 		state.Checkers = append(state.Checkers, CheckerModel{
 			ID:      types.StringValue(c.ID),
 			Region:  types.StringValue(c.Region),
 			Country: types.StringValue(c.Country),
 			IP:      types.StringValue(c.IP),
-			ASN:     types.StringValue(c.ASN),
+			ASN:     types.StringValue(asn),
 			Mode:    types.StringValue(c.Mode),
 			Status:  types.StringValue(c.Status),
 		})

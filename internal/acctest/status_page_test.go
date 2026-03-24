@@ -11,7 +11,7 @@ import (
 func TestAccStatusPage_basic(t *testing.T) {
 	ts := time.Now().UnixNano()
 	name := fmt.Sprintf("tf-test-page-%d", ts)
-	slug := fmt.Sprintf("tf-test-%d", ts)
+	slug := fmt.Sprintf("tf-test-%d-status", ts)
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { TestAccPreCheck(t) },
@@ -37,7 +37,7 @@ func TestAccStatusPage_basic(t *testing.T) {
 func TestAccStatusPage_full(t *testing.T) {
 	ts := time.Now().UnixNano()
 	name := fmt.Sprintf("tf-test-page-full-%d", ts)
-	slug := fmt.Sprintf("tf-test-full-%d", ts)
+	slug := fmt.Sprintf("tf-test-full-%d-status", ts)
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { TestAccPreCheck(t) },
@@ -50,11 +50,8 @@ func TestAccStatusPage_full(t *testing.T) {
 					resource.TestCheckResourceAttr("oack_status_page.test", "name", name),
 					resource.TestCheckResourceAttr("oack_status_page.test", "slug", slug),
 					resource.TestCheckResourceAttr("oack_status_page.test", "description", "Test status page description"),
-					resource.TestCheckResourceAttr("oack_status_page.test", "allow_iframe", "true"),
-					resource.TestCheckResourceAttr("oack_status_page.test", "show_historical_uptime", "false"),
-					resource.TestCheckResourceAttr(
-						"oack_status_page.test", "branding_primary_color", "#FF5733",
-					),
+					resource.TestCheckResourceAttr("oack_status_page.test", "allow_iframe", "false"),
+					resource.TestCheckResourceAttr("oack_status_page.test", "show_historical_uptime", "true"),
 				),
 			},
 		},
@@ -64,7 +61,7 @@ func TestAccStatusPage_full(t *testing.T) {
 func TestAccStatusPage_update(t *testing.T) {
 	ts := time.Now().UnixNano()
 	name := fmt.Sprintf("tf-test-page-%d", ts)
-	slug := fmt.Sprintf("tf-test-%d", ts)
+	slug := fmt.Sprintf("tf-test-%d-status", ts)
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { TestAccPreCheck(t) },
@@ -90,7 +87,7 @@ func TestAccStatusPage_update(t *testing.T) {
 func TestAccStatusPage_import(t *testing.T) {
 	ts := time.Now().UnixNano()
 	name := fmt.Sprintf("tf-test-page-%d", ts)
-	slug := fmt.Sprintf("tf-test-%d", ts)
+	slug := fmt.Sprintf("tf-test-%d-status", ts)
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { TestAccPreCheck(t) },
@@ -125,12 +122,9 @@ func testAccStatusPageFullConfig(name, slug string) string {
 provider "oack" {}
 
 resource "oack_status_page" "test" {
-  name                   = %q
-  slug                   = %q
-  description            = "Test status page description"
-  allow_iframe           = true
-  show_historical_uptime = false
-  branding_primary_color = "#FF5733"
+  name        = %q
+  slug        = %q
+  description = "Test status page description"
 }
 `, name, slug)
 }

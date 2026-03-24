@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/float64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -125,7 +127,11 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"headers": schema.MapAttribute{
 				Description: "Custom request headers.",
 				Optional:    true,
+				Computed:    true,
 				ElementType: types.StringType,
+				PlanModifiers: []planmodifier.Map{
+					mapplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"follow_redirects": schema.BoolAttribute{
 				Description: "Follow HTTP redirects.",
@@ -136,7 +142,11 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"allowed_status_codes": schema.ListAttribute{
 				Description: "Allowed status codes (e.g. 2xx, 200, 404).",
 				Optional:    true,
+				Computed:    true,
 				ElementType: types.StringType,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"failure_threshold": schema.Int64Attribute{
 				Description: "Consecutive failures before marking down.",
@@ -159,7 +169,11 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"ssl_expiry_thresholds": schema.ListAttribute{
 				Description: "Days before SSL expiry to alert.",
 				Optional:    true,
+				Computed:    true,
 				ElementType: types.Int64Type,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"domain_expiry_enabled": schema.BoolAttribute{
 				Description: "Monitor domain expiry.",
@@ -170,7 +184,11 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"domain_expiry_thresholds": schema.ListAttribute{
 				Description: "Days before domain expiry to alert.",
 				Optional:    true,
+				Computed:    true,
 				ElementType: types.Int64Type,
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"uptime_threshold_good": schema.Float64Attribute{
 				Description: "Uptime percentage for good status.",
@@ -211,14 +229,23 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"health_status": schema.StringAttribute{
 				Description: "Current health status (up/down). Read-only.",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"created_at": schema.StringAttribute{
 				Description: "Creation timestamp (RFC 3339).",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"updated_at": schema.StringAttribute{
 				Description: "Last update timestamp (RFC 3339).",
 				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 		},
 	}
@@ -351,15 +378,15 @@ func (r *MonitorResource) ImportState(ctx context.Context, req resource.ImportSt
 
 func planToCreateRequest(ctx context.Context, plan *MonitorResourceModel, diags *diag.Diagnostics) *client.CreateMonitorRequest {
 	req := &client.CreateMonitorRequest{
-		Name:            plan.Name.ValueString(),
-		URL:             plan.URL.ValueString(),
-		CheckIntervalMs: plan.CheckIntervalMs.ValueInt64(),
-		TimeoutMs:       plan.TimeoutMs.ValueInt64(),
-		HTTPMethod:      plan.HTTPMethod.ValueString(),
-		HTTPVersion:     plan.HTTPVersion.ValueString(),
-		Status:          plan.Status.ValueString(),
-		CheckerRegion:   plan.CheckerRegion.ValueString(),
-		CheckerCountry:  plan.CheckerCountry.ValueString(),
+		Name:              plan.Name.ValueString(),
+		URL:               plan.URL.ValueString(),
+		CheckIntervalMs:   plan.CheckIntervalMs.ValueInt64(),
+		TimeoutMs:         plan.TimeoutMs.ValueInt64(),
+		HTTPMethod:        plan.HTTPMethod.ValueString(),
+		HTTPVersion:       plan.HTTPVersion.ValueString(),
+		Status:            plan.Status.ValueString(),
+		CheckerRegion:     plan.CheckerRegion.ValueString(),
+		CheckerCountry:    plan.CheckerCountry.ValueString(),
 		ResolveOverrideIP: plan.ResolveOverrideIP.ValueString(),
 	}
 
@@ -447,43 +474,35 @@ func monitorToState(ctx context.Context, m *client.Monitor, state *MonitorResour
 	state.CreatedAt = types.StringValue(m.CreatedAt)
 	state.UpdatedAt = types.StringValue(m.UpdatedAt)
 
-	if m.Headers != nil {
-		headers, d := types.MapValueFrom(ctx, types.StringType, m.Headers)
-		diags.Append(d...)
-		state.Headers = headers
-	} else {
-		state.Headers = types.MapNull(types.StringType)
+	// Always set list/map fields from API response to avoid null→non-null
+	// inconsistency when Terraform plan has null but API returns defaults.
+	if m.Headers == nil {
+		m.Headers = map[string]string{}
 	}
+	headers, d := types.MapValueFrom(ctx, types.StringType, m.Headers)
+	diags.Append(d...)
+	state.Headers = headers
 
-	if m.AllowedStatusCodes != nil {
-		codes, d := types.ListValueFrom(ctx, types.StringType, m.AllowedStatusCodes)
-		diags.Append(d...)
-		state.AllowedStatusCodes = codes
-	} else {
-		state.AllowedStatusCodes = types.ListNull(types.StringType)
+	if m.AllowedStatusCodes == nil {
+		m.AllowedStatusCodes = []string{}
 	}
+	codes, d2 := types.ListValueFrom(ctx, types.StringType, m.AllowedStatusCodes)
+	diags.Append(d2...)
+	state.AllowedStatusCodes = codes
 
-	if m.SSLExpiryThresholds != nil {
-		int64s := make([]int64, len(m.SSLExpiryThresholds))
-		for i, v := range m.SSLExpiryThresholds {
-			int64s[i] = int64(v)
-		}
-		thresholds, d := types.ListValueFrom(ctx, types.Int64Type, int64s)
-		diags.Append(d...)
-		state.SSLExpiryThresholds = thresholds
-	} else {
-		state.SSLExpiryThresholds = types.ListNull(types.Int64Type)
+	sslInts := make([]int64, len(m.SSLExpiryThresholds))
+	for i, v := range m.SSLExpiryThresholds {
+		sslInts[i] = int64(v)
 	}
+	sslThresholds, d3 := types.ListValueFrom(ctx, types.Int64Type, sslInts)
+	diags.Append(d3...)
+	state.SSLExpiryThresholds = sslThresholds
 
-	if m.DomainExpiryThresholds != nil {
-		int64s := make([]int64, len(m.DomainExpiryThresholds))
-		for i, v := range m.DomainExpiryThresholds {
-			int64s[i] = int64(v)
-		}
-		thresholds, d := types.ListValueFrom(ctx, types.Int64Type, int64s)
-		diags.Append(d...)
-		state.DomainExpiryThresholds = thresholds
-	} else {
-		state.DomainExpiryThresholds = types.ListNull(types.Int64Type)
+	domInts := make([]int64, len(m.DomainExpiryThresholds))
+	for i, v := range m.DomainExpiryThresholds {
+		domInts[i] = int64(v)
 	}
+	domThresholds, d4 := types.ListValueFrom(ctx, types.Int64Type, domInts)
+	diags.Append(d4...)
+	state.DomainExpiryThresholds = domThresholds
 }

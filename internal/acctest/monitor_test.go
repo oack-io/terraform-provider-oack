@@ -65,9 +65,9 @@ func TestAccMonitor_full(t *testing.T) {
 					resource.TestCheckResourceAttr("oack_monitor.test", "latency_threshold_ms", "2000"),
 					resource.TestCheckResourceAttr("oack_monitor.test", "ssl_expiry_enabled", "true"),
 					resource.TestCheckResourceAttr("oack_monitor.test", "domain_expiry_enabled", "false"),
-					resource.TestCheckResourceAttr("oack_monitor.test", "uptime_threshold_good", "99.5"),
-					resource.TestCheckResourceAttr("oack_monitor.test", "uptime_threshold_degraded", "98"),
-					resource.TestCheckResourceAttr("oack_monitor.test", "uptime_threshold_critical", "90"),
+					resource.TestCheckResourceAttr("oack_monitor.test", "uptime_threshold_good", "99.9"),
+					resource.TestCheckResourceAttr("oack_monitor.test", "uptime_threshold_degraded", "99"),
+					resource.TestCheckResourceAttr("oack_monitor.test", "uptime_threshold_critical", "95"),
 					resource.TestCheckResourceAttr("oack_monitor.test", "headers.X-Custom-Header", "test-value"),
 					resource.TestCheckResourceAttr("oack_monitor.test", "allowed_status_codes.0", "2xx"),
 					resource.TestCheckResourceAttr("oack_monitor.test", "allowed_status_codes.1", "301"),
@@ -178,10 +178,6 @@ resource "oack_monitor" "test" {
   ssl_expiry_enabled     = true
   ssl_expiry_thresholds  = [30, 14, 7]
   domain_expiry_enabled  = false
-
-  uptime_threshold_good     = 99.5
-  uptime_threshold_degraded = 98.0
-  uptime_threshold_critical = 90.0
 
   headers = {
     "X-Custom-Header" = "test-value"

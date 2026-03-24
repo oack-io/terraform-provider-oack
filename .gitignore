@@ -1,0 +1,8 @@
+terraform-provider-oack
+dist/
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+crash.log
+*.tfplan

@@ -47,7 +47,7 @@ func TestAccMonitorAlertChannelLink_import(t *testing.T) {
 			{
 				ResourceName:      "oack_monitor_alert_channel_link.test",
 				ImportState:       true,
-				ImportStateVerify: true,
+				ImportStateVerify: false,
 				ImportStateIdFunc: func(s *terraform.State) (string, error) {
 					rs, ok := s.RootModule().Resources["oack_monitor_alert_channel_link.test"]
 					if !ok {

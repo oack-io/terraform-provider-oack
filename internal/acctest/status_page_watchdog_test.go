@@ -12,8 +12,8 @@ import (
 func TestAccWatchdog_basic(t *testing.T) {
 	ts := time.Now().UnixNano()
 	teamName := fmt.Sprintf("tf-test-team-%d", ts)
-	pageName := fmt.Sprintf("tf-test-page-%d", ts)
-	pageSlug := fmt.Sprintf("tf-test-wd-%d", ts)
+	pageName := fmt.Sprintf("tf-test-%d-status", ts)
+	pageSlug := fmt.Sprintf("tf-test-wd-%d-status", ts)
 	compName := fmt.Sprintf("tf-test-comp-%d", ts)
 	monitorName := fmt.Sprintf("tf-test-monitor-%d", ts)
 
@@ -60,8 +60,8 @@ func TestAccWatchdog_basic(t *testing.T) {
 func TestAccWatchdog_import(t *testing.T) {
 	ts := time.Now().UnixNano()
 	teamName := fmt.Sprintf("tf-test-team-%d", ts)
-	pageName := fmt.Sprintf("tf-test-page-%d", ts)
-	pageSlug := fmt.Sprintf("tf-test-wdi-%d", ts)
+	pageName := fmt.Sprintf("tf-test-%d-status", ts)
+	pageSlug := fmt.Sprintf("tf-test-wdi-%d-status", ts)
 	compName := fmt.Sprintf("tf-test-comp-%d", ts)
 	monitorName := fmt.Sprintf("tf-test-monitor-%d", ts)
 
