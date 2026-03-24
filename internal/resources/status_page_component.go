@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/oack-io/terraform-provider-oack/internal/client"
@@ -91,6 +93,9 @@ func (r *StatusPageComponentResource) Schema(
 				Optional:    true,
 				Computed:    true,
 				Default:     int64default.StaticInt64(0),
+				Validators: []validator.Int64{
+					int64validator.AtLeast(0),
+				},
 			},
 			"status": schema.StringAttribute{
 				Description: "Current component status.",

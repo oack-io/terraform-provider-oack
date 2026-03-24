@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/oack-io/terraform-provider-oack/internal/client"
@@ -39,7 +42,9 @@ func NewExternalLinkResource() resource.Resource {
 	return &ExternalLinkResource{}
 }
 
-func (r *ExternalLinkResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *ExternalLinkResource) Metadata(
+	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_external_link"
 }
 
@@ -62,8 +67,11 @@ func (r *ExternalLinkResource) Schema(_ context.Context, _ resource.SchemaReques
 				},
 			},
 			"name": schema.StringAttribute{
-				Description: "Link display name.",
+				Description: "Link display name (max 255 characters).",
 				Required:    true,
+				Validators: []validator.String{
+					stringvalidator.LengthAtMost(255),
+				},
 			},
 			"url_template": schema.StringAttribute{
 				Description: "URL template for the external link.",
@@ -76,8 +84,11 @@ func (r *ExternalLinkResource) Schema(_ context.Context, _ resource.SchemaReques
 				Default:     stringdefault.StaticString(""),
 			},
 			"time_window_minutes": schema.Int64Attribute{
-				Description: "Time window in minutes.",
+				Description: "Time window in minutes (must be positive).",
 				Required:    true,
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
+				},
 			},
 			"created_at": schema.StringAttribute{
 				Description: "Creation timestamp (RFC 3339).",
@@ -94,7 +105,9 @@ func (r *ExternalLinkResource) Schema(_ context.Context, _ resource.SchemaReques
 	}
 }
 
-func (r *ExternalLinkResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *ExternalLinkResource) Configure(
+	_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}

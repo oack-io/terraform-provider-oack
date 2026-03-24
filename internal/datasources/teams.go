@@ -32,7 +32,9 @@ func NewTeamsDataSource() datasource.DataSource {
 	return &TeamsDataSource{}
 }
 
-func (d *TeamsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *TeamsDataSource) Metadata(
+	_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_teams"
 }
 
@@ -56,7 +58,9 @@ func (d *TeamsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 	}
 }
 
-func (d *TeamsDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *TeamsDataSource) Configure(
+	_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}

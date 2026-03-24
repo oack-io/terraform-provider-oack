@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/float64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -16,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/oack-io/terraform-provider-oack/internal/client"
@@ -99,30 +103,45 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional:    true,
 				Computed:    true,
 				Default:     stringdefault.StaticString("active"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("active", "paused"),
+				},
 			},
 			"check_interval_ms": schema.Int64Attribute{
 				Description: "Check interval in milliseconds (min 30000).",
 				Optional:    true,
 				Computed:    true,
 				Default:     int64default.StaticInt64(60000),
+				Validators: []validator.Int64{
+					int64validator.AtLeast(30000),
+				},
 			},
 			"timeout_ms": schema.Int64Attribute{
 				Description: "Request timeout in milliseconds.",
 				Optional:    true,
 				Computed:    true,
 				Default:     int64default.StaticInt64(10000),
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
+				},
 			},
 			"http_method": schema.StringAttribute{
 				Description: "HTTP method: GET, POST, PUT, PATCH, DELETE, HEAD.",
 				Optional:    true,
 				Computed:    true,
 				Default:     stringdefault.StaticString("GET"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"),
+				},
 			},
 			"http_version": schema.StringAttribute{
 				Description: "HTTP version: empty (auto), 1.1, or 2.",
 				Optional:    true,
 				Computed:    true,
 				Default:     stringdefault.StaticString(""),
+				Validators: []validator.String{
+					stringvalidator.OneOf("", "1.1", "2"),
+				},
 			},
 			"headers": schema.MapAttribute{
 				Description: "Custom request headers.",
@@ -153,12 +172,18 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional:    true,
 				Computed:    true,
 				Default:     int64default.StaticInt64(3),
+				Validators: []validator.Int64{
+					int64validator.AtLeast(1),
+				},
 			},
 			"latency_threshold_ms": schema.Int64Attribute{
 				Description: "Latency threshold in ms (0 = disabled).",
 				Optional:    true,
 				Computed:    true,
 				Default:     int64default.StaticInt64(0),
+				Validators: []validator.Int64{
+					int64validator.AtLeast(0),
+				},
 			},
 			"ssl_expiry_enabled": schema.BoolAttribute{
 				Description: "Monitor SSL certificate expiry.",
@@ -191,22 +216,31 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				},
 			},
 			"uptime_threshold_good": schema.Float64Attribute{
-				Description: "Uptime percentage for good status.",
+				Description: "Uptime percentage for good status (0-100).",
 				Optional:    true,
 				Computed:    true,
 				Default:     float64default.StaticFloat64(99.9),
+				Validators: []validator.Float64{
+					float64validator.Between(0, 100),
+				},
 			},
 			"uptime_threshold_degraded": schema.Float64Attribute{
-				Description: "Uptime percentage for degraded status.",
+				Description: "Uptime percentage for degraded status (0-100).",
 				Optional:    true,
 				Computed:    true,
 				Default:     float64default.StaticFloat64(99.0),
+				Validators: []validator.Float64{
+					float64validator.Between(0, 100),
+				},
 			},
 			"uptime_threshold_critical": schema.Float64Attribute{
-				Description: "Uptime percentage for critical status.",
+				Description: "Uptime percentage for critical status (0-100).",
 				Optional:    true,
 				Computed:    true,
 				Default:     float64default.StaticFloat64(95.0),
+				Validators: []validator.Float64{
+					float64validator.Between(0, 100),
+				},
 			},
 			"checker_region": schema.StringAttribute{
 				Description: "Preferred checker region.",
@@ -251,7 +285,9 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 	}
 }
 
-func (r *MonitorResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *MonitorResource) Configure(
+	_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -348,7 +384,9 @@ func (r *MonitorResource) Delete(ctx context.Context, req resource.DeleteRequest
 	}
 }
 
-func (r *MonitorResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *MonitorResource) ImportState(
+	ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse,
+) {
 	// Import ID format: team_id/monitor_id
 	parts := strings.SplitN(req.ID, "/", 2)
 	if len(parts) != 2 {
@@ -376,7 +414,9 @@ func (r *MonitorResource) ImportState(ctx context.Context, req resource.ImportSt
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-func planToCreateRequest(ctx context.Context, plan *MonitorResourceModel, diags *diag.Diagnostics) *client.CreateMonitorRequest {
+func planToCreateRequest(
+	ctx context.Context, plan *MonitorResourceModel, diags *diag.Diagnostics,
+) *client.CreateMonitorRequest {
 	req := &client.CreateMonitorRequest{
 		Name:              plan.Name.ValueString(),
 		URL:               plan.URL.ValueString(),

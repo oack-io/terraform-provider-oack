@@ -3,15 +3,23 @@ package resources
 import (
 	"context"
 	"fmt"
+	"regexp"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/oack-io/terraform-provider-oack/internal/client"
+)
+
+var (
+	regexpSlug     = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,98}[a-z0-9])?$`)
+	regexpHexColor = regexp.MustCompile(`^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`)
 )
 
 var (
@@ -68,10 +76,16 @@ func (r *StatusPageResource) Schema(
 				Required:    true,
 			},
 			"slug": schema.StringAttribute{
-				Description: "URL slug for the status page.",
+				Description: "URL slug. Lowercase letters, digits, and hyphens (1-100 chars).",
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(
+						regexpSlug,
+						"must contain only lowercase letters, digits, and hyphens (1-100 chars), start and end with alphanumeric",
+					),
 				},
 			},
 			"description": schema.StringAttribute{
@@ -112,8 +126,14 @@ func (r *StatusPageResource) Schema(
 				Optional:    true,
 			},
 			"branding_primary_color": schema.StringAttribute{
-				Description: "Primary color hex code for branding.",
+				Description: "Primary color hex code for branding (e.g. #FF5733).",
 				Optional:    true,
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(
+						regexpHexColor,
+						"must be a valid hex color code (e.g. #RRGGBB or #RRGGBBAA)",
+					),
+				},
 			},
 			"created_at": schema.StringAttribute{
 				Description: "Creation timestamp (RFC 3339).",

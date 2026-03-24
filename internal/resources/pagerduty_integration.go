@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/oack-io/terraform-provider-oack/internal/client"
@@ -67,6 +69,9 @@ func (r *PagerDutyIntegrationResource) Schema(
 			"region": schema.StringAttribute{
 				Description: "PagerDuty region: us or eu.",
 				Required:    true,
+				Validators: []validator.String{
+					stringvalidator.OneOf("us", "eu"),
+				},
 			},
 			"service_ids": schema.ListAttribute{
 				Description: "List of PagerDuty service IDs to sync.",

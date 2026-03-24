@@ -11,6 +11,9 @@ The Oack provider lets you manage [Oack](https://oack.io) uptime monitoring
 infrastructure as code. Create monitors, configure alert channels, build status
 pages, and wire everything together with Terraform.
 
+Browse the full provider documentation on the
+[Terraform Registry](https://registry.terraform.io/providers/oack-io/oack/latest).
+
 ## Authentication
 
 The provider requires an account-level API key and an account ID. Both can be

@@ -265,7 +265,9 @@ func (c *Client) GetMonitor(ctx context.Context, teamID, monitorID string) (*Mon
 	return &monitor, nil
 }
 
-func (c *Client) UpdateMonitor(ctx context.Context, teamID, monitorID string, req *CreateMonitorRequest) (*Monitor, error) {
+func (c *Client) UpdateMonitor(
+	ctx context.Context, teamID, monitorID string, req *CreateMonitorRequest,
+) (*Monitor, error) {
 	body, status, err := c.do(ctx, http.MethodPut,
 		"/api/v1/teams/"+teamID+"/monitors/"+monitorID, req)
 	if err != nil {
@@ -343,7 +345,9 @@ type CreateAlertChannelRequest struct {
 	Enabled *bool             `json:"enabled,omitempty"`
 }
 
-func (c *Client) CreateAlertChannel(ctx context.Context, teamID string, req *CreateAlertChannelRequest) (*AlertChannel, error) {
+func (c *Client) CreateAlertChannel(
+	ctx context.Context, teamID string, req *CreateAlertChannelRequest,
+) (*AlertChannel, error) {
 	body, status, err := c.do(ctx, http.MethodPost,
 		"/api/v1/teams/"+teamID+"/alert-channels", req)
 	if err != nil {
@@ -389,7 +393,9 @@ func (c *Client) ListAlertChannels(ctx context.Context, teamID string) ([]AlertC
 	return channels, nil
 }
 
-func (c *Client) UpdateAlertChannel(ctx context.Context, teamID, channelID string, req *CreateAlertChannelRequest) (*AlertChannel, error) {
+func (c *Client) UpdateAlertChannel(
+	ctx context.Context, teamID, channelID string, req *CreateAlertChannelRequest,
+) (*AlertChannel, error) {
 	body, status, err := c.do(ctx, http.MethodPut,
 		"/api/v1/teams/"+teamID+"/alert-channels/"+channelID, req)
 	if err != nil {
@@ -530,7 +536,9 @@ func (c *Client) GetStatusPage(ctx context.Context, pageID string) (*StatusPage,
 	return &sp, nil
 }
 
-func (c *Client) UpdateStatusPage(ctx context.Context, pageID string, req *CreateStatusPageRequest) (*StatusPage, error) {
+func (c *Client) UpdateStatusPage(
+	ctx context.Context, pageID string, req *CreateStatusPageRequest,
+) (*StatusPage, error) {
 	body, status, err := c.do(ctx, http.MethodPut,
 		"/api/v1/accounts/"+c.AccountID+"/status-pages/"+pageID, req)
 	if err != nil {
@@ -578,7 +586,9 @@ type CreateComponentGroupRequest struct {
 	Collapsed   *bool  `json:"collapsed,omitempty"`
 }
 
-func (c *Client) CreateComponentGroup(ctx context.Context, pageID string, req *CreateComponentGroupRequest) (*ComponentGroup, error) {
+func (c *Client) CreateComponentGroup(
+	ctx context.Context, pageID string, req *CreateComponentGroupRequest,
+) (*ComponentGroup, error) {
 	body, status, err := c.do(ctx, http.MethodPost,
 		"/api/v1/accounts/"+c.AccountID+"/status-pages/"+pageID+"/component-groups", req)
 	if err != nil {
@@ -616,7 +626,9 @@ func (c *Client) GetComponentGroup(ctx context.Context, pageID, groupID string) 
 	return nil, nil
 }
 
-func (c *Client) UpdateComponentGroup(ctx context.Context, pageID, groupID string, req *CreateComponentGroupRequest) (*ComponentGroup, error) {
+func (c *Client) UpdateComponentGroup(
+	ctx context.Context, pageID, groupID string, req *CreateComponentGroupRequest,
+) (*ComponentGroup, error) {
 	body, status, err := c.do(ctx, http.MethodPut,
 		"/api/v1/accounts/"+c.AccountID+"/status-pages/"+pageID+"/component-groups/"+groupID, req)
 	if err != nil {
@@ -704,7 +716,9 @@ func (c *Client) GetComponent(ctx context.Context, pageID, compID string) (*Comp
 	return nil, nil
 }
 
-func (c *Client) UpdateComponent(ctx context.Context, pageID, compID string, req *CreateComponentRequest) (*Component, error) {
+func (c *Client) UpdateComponent(
+	ctx context.Context, pageID, compID string, req *CreateComponentRequest,
+) (*Component, error) {
 	body, status, err := c.do(ctx, http.MethodPut,
 		"/api/v1/accounts/"+c.AccountID+"/status-pages/"+pageID+"/components/"+compID, req)
 	if err != nil {
@@ -755,7 +769,9 @@ type CreateWatchdogRequest struct {
 	TemplateID        string `json:"template_id,omitempty"`
 }
 
-func (c *Client) CreateWatchdog(ctx context.Context, pageID, compID string, req *CreateWatchdogRequest) (*Watchdog, error) {
+func (c *Client) CreateWatchdog(
+	ctx context.Context, pageID, compID string, req *CreateWatchdogRequest,
+) (*Watchdog, error) {
 	body, status, err := c.do(ctx, http.MethodPost,
 		"/api/v1/accounts/"+c.AccountID+"/status-pages/"+pageID+"/components/"+compID+"/watchdogs", req)
 	if err != nil {
@@ -824,7 +840,9 @@ type CreateExternalLinkRequest struct {
 	TimeWindowMinutes int    `json:"time_window_minutes"`
 }
 
-func (c *Client) CreateExternalLink(ctx context.Context, teamID string, req *CreateExternalLinkRequest) (*ExternalLink, error) {
+func (c *Client) CreateExternalLink(
+	ctx context.Context, teamID string, req *CreateExternalLinkRequest,
+) (*ExternalLink, error) {
 	body, status, err := c.do(ctx, http.MethodPost,
 		"/api/v1/teams/"+teamID+"/external-links", req)
 	if err != nil {
@@ -861,7 +879,9 @@ func (c *Client) GetExternalLink(ctx context.Context, teamID, linkID string) (*E
 	return nil, nil
 }
 
-func (c *Client) UpdateExternalLink(ctx context.Context, teamID, linkID string, req *CreateExternalLinkRequest) (*ExternalLink, error) {
+func (c *Client) UpdateExternalLink(
+	ctx context.Context, teamID, linkID string, req *CreateExternalLinkRequest,
+) (*ExternalLink, error) {
 	body, status, err := c.do(ctx, http.MethodPut,
 		"/api/v1/teams/"+teamID+"/external-links/"+linkID, req)
 	if err != nil {
@@ -1073,7 +1093,9 @@ type CreateTeamAPIKeyResponse struct {
 	APIKey TeamAPIKey `json:"api_key"`
 }
 
-func (c *Client) CreateTeamAPIKey(ctx context.Context, teamID string, req *CreateTeamAPIKeyRequest) (*CreateTeamAPIKeyResponse, error) {
+func (c *Client) CreateTeamAPIKey(
+	ctx context.Context, teamID string, req *CreateTeamAPIKeyRequest,
+) (*CreateTeamAPIKeyResponse, error) {
 	body, status, err := c.do(ctx, http.MethodPost,
 		"/api/v1/teams/"+teamID+"/api-keys", req)
 	if err != nil {

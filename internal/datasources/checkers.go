@@ -35,7 +35,9 @@ func NewCheckersDataSource() datasource.DataSource {
 	return &CheckersDataSource{}
 }
 
-func (d *CheckersDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+func (d *CheckersDataSource) Metadata(
+	_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_checkers"
 }
 
@@ -62,7 +64,9 @@ func (d *CheckersDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 	}
 }
 
-func (d *CheckersDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+func (d *CheckersDataSource) Configure(
+	_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}

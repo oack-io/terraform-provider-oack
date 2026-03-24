@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/oack-io/terraform-provider-oack/internal/client"
@@ -86,6 +88,9 @@ func (r *StatusPageWatchdogResource) Schema(
 				Required:    true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
+				},
+				Validators: []validator.String{
+					stringvalidator.OneOf("minor", "medium", "major", "critical"),
 				},
 			},
 			"auto_create": schema.BoolAttribute{

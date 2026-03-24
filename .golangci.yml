@@ -23,6 +23,7 @@ linters:
     - whitespace
     - durationcheck
     - unparam
+    - lll
   exclusions:
     rules:
       - path: _test\.go
@@ -33,6 +34,8 @@ linters:
       - examples
 
   settings:
+    lll:
+      line-length: 120
     revive:
       rules:
         - name: exported

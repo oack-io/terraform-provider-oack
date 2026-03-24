@@ -33,13 +33,18 @@ func NewMonitorAlertChannelLinkResource() resource.Resource {
 	return &MonitorAlertChannelLinkResource{}
 }
 
-func (r *MonitorAlertChannelLinkResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *MonitorAlertChannelLinkResource) Metadata(
+	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_monitor_alert_channel_link"
 }
 
-func (r *MonitorAlertChannelLinkResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *MonitorAlertChannelLinkResource) Schema(
+	_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse,
+) {
 	resp.Schema = schema.Schema{
-		Description: "Links an alert channel to a monitor. When the monitor goes down, the linked channel receives notifications.",
+		Description: "Links an alert channel to a monitor. " +
+			"When the monitor goes down, the linked channel receives notifications.",
 		Attributes: map[string]schema.Attribute{
 			"team_id": schema.StringAttribute{
 				Description: "Team UUID.",
@@ -66,7 +71,9 @@ func (r *MonitorAlertChannelLinkResource) Schema(_ context.Context, _ resource.S
 	}
 }
 
-func (r *MonitorAlertChannelLinkResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *MonitorAlertChannelLinkResource) Configure(
+	_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -79,7 +86,9 @@ func (r *MonitorAlertChannelLinkResource) Configure(_ context.Context, req resou
 	r.client = c
 }
 
-func (r *MonitorAlertChannelLinkResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *MonitorAlertChannelLinkResource) Create(
+	ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse,
+) {
 	var plan MonitorAlertChannelLinkModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
@@ -98,7 +107,9 @@ func (r *MonitorAlertChannelLinkResource) Create(ctx context.Context, req resour
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
-func (r *MonitorAlertChannelLinkResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+func (r *MonitorAlertChannelLinkResource) Read(
+	ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse,
+) {
 	var state MonitorAlertChannelLinkModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -128,13 +139,17 @@ func (r *MonitorAlertChannelLinkResource) Read(ctx context.Context, req resource
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func (r *MonitorAlertChannelLinkResource) Update(_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *MonitorAlertChannelLinkResource) Update(
+	_ context.Context, _ resource.UpdateRequest, resp *resource.UpdateResponse,
+) {
 	// All attributes require replace — Update should never be called.
 	resp.Diagnostics.AddError("Update Not Supported",
 		"All attributes of monitor_alert_channel_link require replacement")
 }
 
-func (r *MonitorAlertChannelLinkResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *MonitorAlertChannelLinkResource) Delete(
+	ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse,
+) {
 	var state MonitorAlertChannelLinkModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -150,7 +165,9 @@ func (r *MonitorAlertChannelLinkResource) Delete(ctx context.Context, req resour
 	}
 }
 
-func (r *MonitorAlertChannelLinkResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *MonitorAlertChannelLinkResource) ImportState(
+	ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse,
+) {
 	// Format: team_id/monitor_id/channel_id
 	parts := strings.SplitN(req.ID, "/", 3)
 	if len(parts) != 3 {

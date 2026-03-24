@@ -157,7 +157,9 @@ func (r *TeamResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 	}
 }
 
-func (r *TeamResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *TeamResource) ImportState(
+	ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse,
+) {
 	team, err := r.client.GetTeam(ctx, req.ID)
 	if err != nil {
 		resp.Diagnostics.AddError("Import Team Failed", err.Error())

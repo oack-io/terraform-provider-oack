@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/oack-io/terraform-provider-oack/internal/client"
@@ -41,7 +43,9 @@ func NewAlertChannelResource() resource.Resource {
 	return &AlertChannelResource{}
 }
 
-func (r *AlertChannelResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *AlertChannelResource) Metadata(
+	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_alert_channel"
 }
 
@@ -73,9 +77,13 @@ func (r *AlertChannelResource) Schema(_ context.Context, _ resource.SchemaReques
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
+				Validators: []validator.String{
+					stringvalidator.OneOf("slack", "webhook", "email", "telegram", "discord", "pagerduty"),
+				},
 			},
 			"config": schema.MapAttribute{
-				Description: "Type-specific config. slack: webhook_url; email: email; webhook: url; telegram: chat_id; discord: webhook_url; pagerduty: routing_key + region.",
+				Description: "Type-specific config. slack: webhook_url; email: email; " +
+					"webhook: url; telegram: chat_id; discord: webhook_url; pagerduty: routing_key + region.",
 				Required:    true,
 				Sensitive:   true,
 				ElementType: types.StringType,
@@ -102,7 +110,9 @@ func (r *AlertChannelResource) Schema(_ context.Context, _ resource.SchemaReques
 	}
 }
 
-func (r *AlertChannelResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *AlertChannelResource) Configure(
+	_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse,
+) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -216,7 +226,9 @@ func (r *AlertChannelResource) Delete(ctx context.Context, req resource.DeleteRe
 	}
 }
 
-func (r *AlertChannelResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *AlertChannelResource) ImportState(
+	ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse,
+) {
 	// Format: team_id/channel_id
 	parts := strings.SplitN(req.ID, "/", 2)
 	if len(parts) != 2 {
@@ -242,7 +254,9 @@ func (r *AlertChannelResource) ImportState(ctx context.Context, req resource.Imp
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func channelToState(ctx context.Context, ch *client.AlertChannel, state *AlertChannelResourceModel, diags *diag.Diagnostics) {
+func channelToState(
+	ctx context.Context, ch *client.AlertChannel, state *AlertChannelResourceModel, diags *diag.Diagnostics,
+) {
 	state.ID = types.StringValue(ch.ID)
 	state.TeamID = types.StringValue(ch.TeamID)
 	state.Name = types.StringValue(ch.Name)
