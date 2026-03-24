@@ -14,7 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
+	oack "github.com/oack-io/oack-go"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 )
 
 var (
@@ -23,7 +24,7 @@ var (
 )
 
 type StatusPageWatchdogResource struct {
-	client *client.Client
+	data *providerdata.Data
 }
 
 type StatusPageWatchdogResourceModel struct {
@@ -129,13 +130,13 @@ func (r *StatusPageWatchdogResource) Configure(
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+			fmt.Sprintf("Expected *providerdata.Data, got: %T", req.ProviderData))
 		return
 	}
-	r.client = c
+	r.data = c
 }
 
 func (r *StatusPageWatchdogResource) Create(
@@ -148,8 +149,8 @@ func (r *StatusPageWatchdogResource) Create(
 	}
 
 	apiReq := watchdogToRequest(&plan)
-	w, err := r.client.CreateWatchdog(ctx,
-		plan.StatusPageID.ValueString(), plan.ComponentID.ValueString(), apiReq)
+	w, err := r.data.Client.CreateWatchdog(ctx,
+		r.data.AccountID, plan.StatusPageID.ValueString(), plan.ComponentID.ValueString(), apiReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Create Watchdog Failed", err.Error())
 		return
@@ -168,16 +169,17 @@ func (r *StatusPageWatchdogResource) Read(
 		return
 	}
 
-	w, err := r.client.GetWatchdog(ctx,
+	w, err := getWatchdog(ctx, r.data.Client,
+		r.data.AccountID,
 		state.StatusPageID.ValueString(),
 		state.ComponentID.ValueString(),
 		state.ID.ValueString())
 	if err != nil {
+		if oack.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Read Watchdog Failed", err.Error())
-		return
-	}
-	if w == nil {
-		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -204,7 +206,8 @@ func (r *StatusPageWatchdogResource) Delete(
 		return
 	}
 
-	if err := r.client.DeleteWatchdog(ctx,
+	if err := r.data.Client.DeleteWatchdog(ctx,
+		r.data.AccountID,
 		state.StatusPageID.ValueString(),
 		state.ComponentID.ValueString(),
 		state.ID.ValueString()); err != nil {
@@ -224,15 +227,9 @@ func (r *StatusPageWatchdogResource) ImportState(
 	}
 	pageID, compID, watchdogID := parts[0], parts[1], parts[2]
 
-	w, err := r.client.GetWatchdog(ctx, pageID, compID, watchdogID)
+	w, err := getWatchdog(ctx, r.data.Client, r.data.AccountID, pageID, compID, watchdogID)
 	if err != nil {
 		resp.Diagnostics.AddError("Import Watchdog Failed", err.Error())
-		return
-	}
-	if w == nil {
-		resp.Diagnostics.AddError("Watchdog Not Found",
-			fmt.Sprintf("Watchdog %s not found for component %s in status page %s",
-				watchdogID, compID, pageID))
 		return
 	}
 
@@ -242,8 +239,24 @@ func (r *StatusPageWatchdogResource) ImportState(
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func watchdogToRequest(m *StatusPageWatchdogResourceModel) *client.CreateWatchdogRequest {
-	r := &client.CreateWatchdogRequest{
+// getWatchdog lists all watchdogs for a component and returns the one matching watchdogID.
+func getWatchdog(
+	ctx context.Context, c *oack.Client, accountID, pageID, compID, watchdogID string,
+) (*oack.Watchdog, error) {
+	watchdogs, err := c.ListWatchdogs(ctx, accountID, pageID, compID)
+	if err != nil {
+		return nil, err
+	}
+	for _, w := range watchdogs {
+		if w.ID == watchdogID {
+			return &w, nil
+		}
+	}
+	return nil, &oack.APIError{StatusCode: 404, Message: "watchdog not found"}
+}
+
+func watchdogToRequest(m *StatusPageWatchdogResourceModel) *oack.CreateWatchdogParams {
+	r := &oack.CreateWatchdogParams{
 		MonitorID: m.MonitorID.ValueString(),
 		Severity:  m.Severity.ValueString(),
 	}
@@ -267,7 +280,7 @@ func watchdogToRequest(m *StatusPageWatchdogResourceModel) *client.CreateWatchdo
 	return r
 }
 
-func watchdogToState(w *client.Watchdog, m *StatusPageWatchdogResourceModel) {
+func watchdogToState(w *oack.Watchdog, m *StatusPageWatchdogResourceModel) {
 	m.ID = types.StringValue(w.ID)
 	m.ComponentID = types.StringValue(w.ComponentID)
 	m.MonitorID = types.StringValue(w.MonitorID)

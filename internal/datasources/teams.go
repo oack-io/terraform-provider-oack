@@ -8,13 +8,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 )
 
 var _ datasource.DataSource = &TeamsDataSource{}
 
 type TeamsDataSource struct {
-	client *client.Client
+	data *providerdata.Data
 }
 
 type TeamsDataSourceModel struct {
@@ -64,17 +64,17 @@ func (d *TeamsDataSource) Configure(
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected DataSource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+			fmt.Sprintf("Expected *providerdata.Data, got: %T", req.ProviderData))
 		return
 	}
-	d.client = c
+	d.data = c
 }
 
 func (d *TeamsDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
-	teams, err := d.client.ListTeams(ctx)
+	teams, err := d.data.Client.ListAccountTeams(ctx, d.data.AccountID)
 	if err != nil {
 		resp.Diagnostics.AddError("Read Teams Failed", err.Error())
 		return

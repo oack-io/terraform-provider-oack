@@ -15,7 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
+	oack "github.com/oack-io/oack-go"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 )
 
 var (
@@ -24,7 +25,7 @@ var (
 )
 
 type AlertChannelResource struct {
-	client *client.Client
+	data *providerdata.Data
 }
 
 type AlertChannelResourceModel struct {
@@ -116,13 +117,13 @@ func (r *AlertChannelResource) Configure(
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+			fmt.Sprintf("Expected *providerdata.Data, got: %T", req.ProviderData))
 		return
 	}
-	r.client = c
+	r.data = c
 }
 
 func (r *AlertChannelResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -139,8 +140,8 @@ func (r *AlertChannelResource) Create(ctx context.Context, req resource.CreateRe
 	}
 
 	enabled := plan.Enabled.ValueBool()
-	ch, err := r.client.CreateAlertChannel(ctx, plan.TeamID.ValueString(),
-		&client.CreateAlertChannelRequest{
+	ch, err := r.data.Client.CreateAlertChannel(ctx, plan.TeamID.ValueString(),
+		&oack.CreateAlertChannelParams{
 			Type:    plan.Type.ValueString(),
 			Name:    plan.Name.ValueString(),
 			Config:  config,
@@ -162,13 +163,13 @@ func (r *AlertChannelResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	ch, err := r.client.GetAlertChannel(ctx, state.TeamID.ValueString(), state.ID.ValueString())
+	ch, err := r.data.Client.GetAlertChannel(ctx, state.TeamID.ValueString(), state.ID.ValueString())
 	if err != nil {
+		if oack.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Read Alert Channel Failed", err.Error())
-		return
-	}
-	if ch == nil {
-		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -196,9 +197,9 @@ func (r *AlertChannelResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	enabled := plan.Enabled.ValueBool()
-	ch, err := r.client.UpdateAlertChannel(ctx,
+	ch, err := r.data.Client.UpdateAlertChannel(ctx,
 		state.TeamID.ValueString(), state.ID.ValueString(),
-		&client.CreateAlertChannelRequest{
+		&oack.CreateAlertChannelParams{
 			Type:    plan.Type.ValueString(),
 			Name:    plan.Name.ValueString(),
 			Config:  config,
@@ -220,7 +221,7 @@ func (r *AlertChannelResource) Delete(ctx context.Context, req resource.DeleteRe
 		return
 	}
 
-	if err := r.client.DeleteAlertChannel(ctx,
+	if err := r.data.Client.DeleteAlertChannel(ctx,
 		state.TeamID.ValueString(), state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Delete Alert Channel Failed", err.Error())
 	}
@@ -238,14 +239,9 @@ func (r *AlertChannelResource) ImportState(
 	}
 	teamID, channelID := parts[0], parts[1]
 
-	ch, err := r.client.GetAlertChannel(ctx, teamID, channelID)
+	ch, err := r.data.Client.GetAlertChannel(ctx, teamID, channelID)
 	if err != nil {
 		resp.Diagnostics.AddError("Import Alert Channel Failed", err.Error())
-		return
-	}
-	if ch == nil {
-		resp.Diagnostics.AddError("Alert Channel Not Found",
-			fmt.Sprintf("Channel %s not found in team %s", channelID, teamID))
 		return
 	}
 
@@ -255,7 +251,7 @@ func (r *AlertChannelResource) ImportState(
 }
 
 func channelToState(
-	ctx context.Context, ch *client.AlertChannel, state *AlertChannelResourceModel, diags *diag.Diagnostics,
+	ctx context.Context, ch *oack.AlertChannel, state *AlertChannelResourceModel, diags *diag.Diagnostics,
 ) {
 	state.ID = types.StringValue(ch.ID)
 	state.TeamID = types.StringValue(ch.TeamID)

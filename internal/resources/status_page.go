@@ -14,7 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
+	oack "github.com/oack-io/oack-go"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 )
 
 var (
@@ -28,7 +29,7 @@ var (
 )
 
 type StatusPageResource struct {
-	client *client.Client
+	data *providerdata.Data
 }
 
 type StatusPageResourceModel struct {
@@ -153,13 +154,13 @@ func (r *StatusPageResource) Configure(
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+			fmt.Sprintf("Expected *providerdata.Data, got: %T", req.ProviderData))
 		return
 	}
-	r.client = c
+	r.data = c
 }
 
 func (r *StatusPageResource) Create(
@@ -172,7 +173,7 @@ func (r *StatusPageResource) Create(
 	}
 
 	apiReq := statusPageToRequest(&plan)
-	sp, err := r.client.CreateStatusPage(ctx, apiReq)
+	sp, err := r.data.Client.CreateStatusPage(ctx, r.data.AccountID, apiReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Create Status Page Failed", err.Error())
 		return
@@ -191,13 +192,13 @@ func (r *StatusPageResource) Read(
 		return
 	}
 
-	sp, err := r.client.GetStatusPage(ctx, state.ID.ValueString())
+	sp, err := r.data.Client.GetStatusPage(ctx, r.data.AccountID, state.ID.ValueString())
 	if err != nil {
+		if oack.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Read Status Page Failed", err.Error())
-		return
-	}
-	if sp == nil {
-		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -221,7 +222,7 @@ func (r *StatusPageResource) Update(
 	}
 
 	apiReq := statusPageToRequest(&plan)
-	sp, err := r.client.UpdateStatusPage(ctx, state.ID.ValueString(), apiReq)
+	sp, err := r.data.Client.UpdateStatusPage(ctx, r.data.AccountID, state.ID.ValueString(), apiReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Update Status Page Failed", err.Error())
 		return
@@ -240,7 +241,7 @@ func (r *StatusPageResource) Delete(
 		return
 	}
 
-	if err := r.client.DeleteStatusPage(ctx, state.ID.ValueString()); err != nil {
+	if err := r.data.Client.DeleteStatusPage(ctx, r.data.AccountID, state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Delete Status Page Failed", err.Error())
 	}
 }
@@ -248,14 +249,9 @@ func (r *StatusPageResource) Delete(
 func (r *StatusPageResource) ImportState(
 	ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse,
 ) {
-	sp, err := r.client.GetStatusPage(ctx, req.ID)
+	sp, err := r.data.Client.GetStatusPage(ctx, r.data.AccountID, req.ID)
 	if err != nil {
 		resp.Diagnostics.AddError("Import Status Page Failed", err.Error())
-		return
-	}
-	if sp == nil {
-		resp.Diagnostics.AddError("Status Page Not Found",
-			fmt.Sprintf("Status page %s not found", req.ID))
 		return
 	}
 
@@ -264,8 +260,8 @@ func (r *StatusPageResource) ImportState(
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func statusPageToRequest(m *StatusPageResourceModel) *client.CreateStatusPageRequest {
-	r := &client.CreateStatusPageRequest{
+func statusPageToRequest(m *StatusPageResourceModel) *oack.CreateStatusPageParams {
+	r := &oack.CreateStatusPageParams{
 		Name: m.Name.ValueString(),
 		Slug: m.Slug.ValueString(),
 	}
@@ -305,7 +301,7 @@ func statusPageToRequest(m *StatusPageResourceModel) *client.CreateStatusPageReq
 	return r
 }
 
-func statusPageToState(sp *client.StatusPage, m *StatusPageResourceModel) {
+func statusPageToState(sp *oack.StatusPage, m *StatusPageResourceModel) {
 	m.ID = types.StringValue(sp.ID)
 	m.Name = types.StringValue(sp.Name)
 	m.Slug = types.StringValue(sp.Slug)

@@ -10,7 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
+	oack "github.com/oack-io/oack-go"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 )
 
 var (
@@ -19,7 +20,7 @@ var (
 )
 
 type TeamResource struct {
-	client *client.Client
+	data *providerdata.Data
 }
 
 type TeamResourceModel struct {
@@ -68,13 +69,13 @@ func (r *TeamResource) Configure(_ context.Context, req resource.ConfigureReques
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+			fmt.Sprintf("Expected *providerdata.Data, got: %T", req.ProviderData))
 		return
 	}
-	r.client = c
+	r.data = c
 }
 
 func (r *TeamResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -84,7 +85,7 @@ func (r *TeamResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	team, err := r.client.CreateTeam(ctx, plan.Name.ValueString())
+	team, err := r.data.Client.CreateTeam(ctx, r.data.AccountID, plan.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Create Team Failed", err.Error())
 		return
@@ -103,13 +104,13 @@ func (r *TeamResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
-	team, err := r.client.GetTeam(ctx, state.ID.ValueString())
+	team, err := r.data.Client.GetTeam(ctx, state.ID.ValueString())
 	if err != nil {
+		if oack.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Read Team Failed", err.Error())
-		return
-	}
-	if team == nil {
-		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -132,7 +133,7 @@ func (r *TeamResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		return
 	}
 
-	team, err := r.client.UpdateTeam(ctx, state.ID.ValueString(), plan.Name.ValueString())
+	team, err := r.data.Client.UpdateTeam(ctx, state.ID.ValueString(), plan.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Update Team Failed", err.Error())
 		return
@@ -151,7 +152,7 @@ func (r *TeamResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 		return
 	}
 
-	if err := r.client.DeleteTeam(ctx, state.ID.ValueString()); err != nil {
+	if err := r.data.Client.DeleteTeam(ctx, state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Delete Team Failed", err.Error())
 		return
 	}
@@ -160,14 +161,9 @@ func (r *TeamResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 func (r *TeamResource) ImportState(
 	ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse,
 ) {
-	team, err := r.client.GetTeam(ctx, req.ID)
+	team, err := r.data.Client.GetTeam(ctx, req.ID)
 	if err != nil {
 		resp.Diagnostics.AddError("Import Team Failed", err.Error())
-		return
-	}
-	if team == nil {
-		resp.Diagnostics.AddError("Team Not Found",
-			fmt.Sprintf("Team %s not found", req.ID))
 		return
 	}
 

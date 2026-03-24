@@ -15,7 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
+	oack "github.com/oack-io/oack-go"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 )
 
 var (
@@ -24,7 +25,7 @@ var (
 )
 
 type StatusPageComponentResource struct {
-	client *client.Client
+	data *providerdata.Data
 }
 
 type StatusPageComponentResourceModel struct {
@@ -119,13 +120,13 @@ func (r *StatusPageComponentResource) Configure(
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+			fmt.Sprintf("Expected *providerdata.Data, got: %T", req.ProviderData))
 		return
 	}
-	r.client = c
+	r.data = c
 }
 
 func (r *StatusPageComponentResource) Create(
@@ -138,7 +139,7 @@ func (r *StatusPageComponentResource) Create(
 	}
 
 	apiReq := componentToRequest(&plan)
-	comp, err := r.client.CreateComponent(ctx, plan.StatusPageID.ValueString(), apiReq)
+	comp, err := r.data.Client.CreateComponent(ctx, r.data.AccountID, plan.StatusPageID.ValueString(), apiReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Create Component Failed", err.Error())
 		return
@@ -157,14 +158,14 @@ func (r *StatusPageComponentResource) Read(
 		return
 	}
 
-	comp, err := r.client.GetComponent(ctx,
-		state.StatusPageID.ValueString(), state.ID.ValueString())
+	comp, err := r.data.Client.GetComponent(ctx,
+		r.data.AccountID, state.StatusPageID.ValueString(), state.ID.ValueString())
 	if err != nil {
+		if oack.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Read Component Failed", err.Error())
-		return
-	}
-	if comp == nil {
-		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -188,8 +189,8 @@ func (r *StatusPageComponentResource) Update(
 	}
 
 	apiReq := componentToRequest(&plan)
-	comp, err := r.client.UpdateComponent(ctx,
-		state.StatusPageID.ValueString(), state.ID.ValueString(), apiReq)
+	comp, err := r.data.Client.UpdateComponent(ctx,
+		r.data.AccountID, state.StatusPageID.ValueString(), state.ID.ValueString(), apiReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Update Component Failed", err.Error())
 		return
@@ -208,8 +209,8 @@ func (r *StatusPageComponentResource) Delete(
 		return
 	}
 
-	if err := r.client.DeleteComponent(ctx,
-		state.StatusPageID.ValueString(), state.ID.ValueString()); err != nil {
+	if err := r.data.Client.DeleteComponent(ctx,
+		r.data.AccountID, state.StatusPageID.ValueString(), state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Delete Component Failed", err.Error())
 	}
 }
@@ -226,14 +227,9 @@ func (r *StatusPageComponentResource) ImportState(
 	}
 	pageID, compID := parts[0], parts[1]
 
-	comp, err := r.client.GetComponent(ctx, pageID, compID)
+	comp, err := r.data.Client.GetComponent(ctx, r.data.AccountID, pageID, compID)
 	if err != nil {
 		resp.Diagnostics.AddError("Import Component Failed", err.Error())
-		return
-	}
-	if comp == nil {
-		resp.Diagnostics.AddError("Component Not Found",
-			fmt.Sprintf("Component %s not found in status page %s", compID, pageID))
 		return
 	}
 
@@ -242,8 +238,8 @@ func (r *StatusPageComponentResource) ImportState(
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func componentToRequest(m *StatusPageComponentResourceModel) *client.CreateComponentRequest {
-	r := &client.CreateComponentRequest{
+func componentToRequest(m *StatusPageComponentResourceModel) *oack.CreateComponentParams {
+	r := &oack.CreateComponentParams{
 		Name:     m.Name.ValueString(),
 		Position: int(m.Position.ValueInt64()),
 	}
@@ -262,7 +258,7 @@ func componentToRequest(m *StatusPageComponentResourceModel) *client.CreateCompo
 	return r
 }
 
-func componentToState(comp *client.Component, m *StatusPageComponentResourceModel) {
+func componentToState(comp *oack.Component, m *StatusPageComponentResourceModel) {
 	m.ID = types.StringValue(comp.ID)
 	m.StatusPageID = types.StringValue(comp.StatusPageID)
 	m.Name = types.StringValue(comp.Name)

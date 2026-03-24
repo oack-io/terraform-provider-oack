@@ -22,7 +22,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
+	oack "github.com/oack-io/oack-go"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 )
 
 var (
@@ -31,7 +32,7 @@ var (
 )
 
 type MonitorResource struct {
-	client *client.Client
+	data *providerdata.Data
 }
 
 type MonitorResourceModel struct {
@@ -291,13 +292,13 @@ func (r *MonitorResource) Configure(
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+			fmt.Sprintf("Expected *providerdata.Data, got: %T", req.ProviderData))
 		return
 	}
-	r.client = c
+	r.data = c
 }
 
 func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -312,7 +313,7 @@ func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	monitor, err := r.client.CreateMonitor(ctx, plan.TeamID.ValueString(), apiReq)
+	monitor, err := r.data.Client.CreateMonitor(ctx, plan.TeamID.ValueString(), apiReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Create Monitor Failed", err.Error())
 		return
@@ -329,13 +330,13 @@ func (r *MonitorResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	monitor, err := r.client.GetMonitor(ctx, state.TeamID.ValueString(), state.ID.ValueString())
+	monitor, err := r.data.Client.GetMonitor(ctx, state.TeamID.ValueString(), state.ID.ValueString())
 	if err != nil {
+		if oack.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Read Monitor Failed", err.Error())
-		return
-	}
-	if monitor == nil {
-		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -361,7 +362,7 @@ func (r *MonitorResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	monitor, err := r.client.UpdateMonitor(ctx, state.TeamID.ValueString(), state.ID.ValueString(), apiReq)
+	monitor, err := r.data.Client.UpdateMonitor(ctx, state.TeamID.ValueString(), state.ID.ValueString(), apiReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Update Monitor Failed", err.Error())
 		return
@@ -378,7 +379,7 @@ func (r *MonitorResource) Delete(ctx context.Context, req resource.DeleteRequest
 		return
 	}
 
-	if err := r.client.DeleteMonitor(ctx, state.TeamID.ValueString(), state.ID.ValueString()); err != nil {
+	if err := r.data.Client.DeleteMonitor(ctx, state.TeamID.ValueString(), state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Delete Monitor Failed", err.Error())
 		return
 	}
@@ -396,14 +397,9 @@ func (r *MonitorResource) ImportState(
 	}
 	teamID, monitorID := parts[0], parts[1]
 
-	monitor, err := r.client.GetMonitor(ctx, teamID, monitorID)
+	monitor, err := r.data.Client.GetMonitor(ctx, teamID, monitorID)
 	if err != nil {
 		resp.Diagnostics.AddError("Import Monitor Failed", err.Error())
-		return
-	}
-	if monitor == nil {
-		resp.Diagnostics.AddError("Monitor Not Found",
-			fmt.Sprintf("Monitor %s not found in team %s", monitorID, teamID))
 		return
 	}
 
@@ -416,8 +412,8 @@ func (r *MonitorResource) ImportState(
 
 func planToCreateRequest(
 	ctx context.Context, plan *MonitorResourceModel, diags *diag.Diagnostics,
-) *client.CreateMonitorRequest {
-	req := &client.CreateMonitorRequest{
+) *oack.CreateMonitorParams {
+	req := &oack.CreateMonitorParams{
 		Name:              plan.Name.ValueString(),
 		URL:               plan.URL.ValueString(),
 		CheckIntervalMs:   plan.CheckIntervalMs.ValueInt64(),
@@ -489,7 +485,7 @@ func planToCreateRequest(
 	return req
 }
 
-func monitorToState(ctx context.Context, m *client.Monitor, state *MonitorResourceModel, diags *diag.Diagnostics) {
+func monitorToState(ctx context.Context, m *oack.Monitor, state *MonitorResourceModel, diags *diag.Diagnostics) {
 	state.ID = types.StringValue(m.ID)
 	state.TeamID = types.StringValue(m.TeamID)
 	state.Name = types.StringValue(m.Name)

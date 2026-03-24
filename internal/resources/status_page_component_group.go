@@ -15,7 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
+	oack "github.com/oack-io/oack-go"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 )
 
 var (
@@ -24,7 +25,7 @@ var (
 )
 
 type StatusPageComponentGroupResource struct {
-	client *client.Client
+	data *providerdata.Data
 }
 
 type StatusPageComponentGroupResourceModel struct {
@@ -109,13 +110,13 @@ func (r *StatusPageComponentGroupResource) Configure(
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+			fmt.Sprintf("Expected *providerdata.Data, got: %T", req.ProviderData))
 		return
 	}
-	r.client = c
+	r.data = c
 }
 
 func (r *StatusPageComponentGroupResource) Create(
@@ -128,7 +129,7 @@ func (r *StatusPageComponentGroupResource) Create(
 	}
 
 	apiReq := componentGroupToRequest(&plan)
-	g, err := r.client.CreateComponentGroup(ctx, plan.StatusPageID.ValueString(), apiReq)
+	g, err := r.data.Client.CreateComponentGroup(ctx, r.data.AccountID, plan.StatusPageID.ValueString(), apiReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Create Component Group Failed", err.Error())
 		return
@@ -147,14 +148,14 @@ func (r *StatusPageComponentGroupResource) Read(
 		return
 	}
 
-	g, err := r.client.GetComponentGroup(ctx,
-		state.StatusPageID.ValueString(), state.ID.ValueString())
+	g, err := r.data.Client.GetComponentGroup(ctx,
+		r.data.AccountID, state.StatusPageID.ValueString(), state.ID.ValueString())
 	if err != nil {
+		if oack.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Read Component Group Failed", err.Error())
-		return
-	}
-	if g == nil {
-		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -178,8 +179,8 @@ func (r *StatusPageComponentGroupResource) Update(
 	}
 
 	apiReq := componentGroupToRequest(&plan)
-	g, err := r.client.UpdateComponentGroup(ctx,
-		state.StatusPageID.ValueString(), state.ID.ValueString(), apiReq)
+	g, err := r.data.Client.UpdateComponentGroup(ctx,
+		r.data.AccountID, state.StatusPageID.ValueString(), state.ID.ValueString(), apiReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Update Component Group Failed", err.Error())
 		return
@@ -198,8 +199,8 @@ func (r *StatusPageComponentGroupResource) Delete(
 		return
 	}
 
-	if err := r.client.DeleteComponentGroup(ctx,
-		state.StatusPageID.ValueString(), state.ID.ValueString()); err != nil {
+	if err := r.data.Client.DeleteComponentGroup(ctx,
+		r.data.AccountID, state.StatusPageID.ValueString(), state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Delete Component Group Failed", err.Error())
 	}
 }
@@ -216,14 +217,9 @@ func (r *StatusPageComponentGroupResource) ImportState(
 	}
 	pageID, groupID := parts[0], parts[1]
 
-	g, err := r.client.GetComponentGroup(ctx, pageID, groupID)
+	g, err := r.data.Client.GetComponentGroup(ctx, r.data.AccountID, pageID, groupID)
 	if err != nil {
 		resp.Diagnostics.AddError("Import Component Group Failed", err.Error())
-		return
-	}
-	if g == nil {
-		resp.Diagnostics.AddError("Component Group Not Found",
-			fmt.Sprintf("Group %s not found in status page %s", groupID, pageID))
 		return
 	}
 
@@ -232,8 +228,8 @@ func (r *StatusPageComponentGroupResource) ImportState(
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func componentGroupToRequest(m *StatusPageComponentGroupResourceModel) *client.CreateComponentGroupRequest {
-	r := &client.CreateComponentGroupRequest{
+func componentGroupToRequest(m *StatusPageComponentGroupResourceModel) *oack.CreateComponentGroupParams {
+	r := &oack.CreateComponentGroupParams{
 		Name:     m.Name.ValueString(),
 		Position: int(m.Position.ValueInt64()),
 	}
@@ -249,7 +245,7 @@ func componentGroupToRequest(m *StatusPageComponentGroupResourceModel) *client.C
 	return r
 }
 
-func componentGroupToState(g *client.ComponentGroup, m *StatusPageComponentGroupResourceModel) {
+func componentGroupToState(g *oack.ComponentGroup, m *StatusPageComponentGroupResourceModel) {
 	m.ID = types.StringValue(g.ID)
 	m.StatusPageID = types.StringValue(g.StatusPageID)
 	m.Name = types.StringValue(g.Name)

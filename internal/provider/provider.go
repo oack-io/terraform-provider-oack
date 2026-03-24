@@ -4,14 +4,16 @@ import (
 	"context"
 	"os"
 
+	oack "github.com/oack-io/oack-go"
+
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
 	"github.com/oack-io/terraform-provider-oack/internal/datasources"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 	"github.com/oack-io/terraform-provider-oack/internal/resources"
 )
 
@@ -88,9 +90,10 @@ func (p *OackProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		return
 	}
 
-	c := client.NewClient(apiURL, apiKey, accountID)
-	resp.DataSourceData = c
-	resp.ResourceData = c
+	c := oack.New(oack.BearerToken(apiKey), oack.WithBaseURL(apiURL))
+	data := &providerdata.Data{Client: c, AccountID: accountID}
+	resp.DataSourceData = data
+	resp.ResourceData = data
 }
 
 func (p *OackProvider) Resources(_ context.Context) []func() resource.Resource {

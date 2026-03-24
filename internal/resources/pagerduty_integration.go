@@ -14,7 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
+	oack "github.com/oack-io/oack-go"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 )
 
 var (
@@ -23,7 +24,7 @@ var (
 )
 
 type PagerDutyIntegrationResource struct {
-	client *client.Client
+	data *providerdata.Data
 }
 
 type PagerDutyIntegrationResourceModel struct {
@@ -113,13 +114,13 @@ func (r *PagerDutyIntegrationResource) Configure(
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+			fmt.Sprintf("Expected *providerdata.Data, got: %T", req.ProviderData))
 		return
 	}
-	r.client = c
+	r.data = c
 }
 
 func (r *PagerDutyIntegrationResource) Create(
@@ -137,7 +138,7 @@ func (r *PagerDutyIntegrationResource) Create(
 		return
 	}
 
-	pd, err := r.client.CreatePDIntegration(ctx, &client.CreatePDIntegrationRequest{
+	pd, err := r.data.Client.CreatePDIntegration(ctx, r.data.AccountID, &oack.CreatePDIntegrationParams{
 		APIKey:     plan.APIKey.ValueString(),
 		Region:     plan.Region.ValueString(),
 		ServiceIDs: serviceIDs,
@@ -162,13 +163,13 @@ func (r *PagerDutyIntegrationResource) Read(
 		return
 	}
 
-	pd, err := r.client.GetPDIntegration(ctx)
+	pd, err := r.data.Client.GetPDIntegration(ctx, r.data.AccountID)
 	if err != nil {
+		if oack.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Read PagerDuty Integration Failed", err.Error())
-		return
-	}
-	if pd == nil {
-		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -194,14 +195,17 @@ func (r *PagerDutyIntegrationResource) Update(
 		return
 	}
 
-	updateReq := map[string]any{
-		"api_key":      plan.APIKey.ValueString(),
-		"region":       plan.Region.ValueString(),
-		"service_ids":  serviceIDs,
-		"sync_enabled": plan.SyncEnabled.ValueBool(),
+	apiKey := plan.APIKey.ValueString()
+	region := plan.Region.ValueString()
+	syncEnabled := plan.SyncEnabled.ValueBool()
+	updateReq := &oack.UpdatePDIntegrationParams{
+		APIKey:      &apiKey,
+		Region:      &region,
+		ServiceIDs:  serviceIDs,
+		SyncEnabled: &syncEnabled,
 	}
 
-	pd, err := r.client.UpdatePDIntegration(ctx, updateReq)
+	pd, err := r.data.Client.UpdatePDIntegration(ctx, r.data.AccountID, updateReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Update PagerDuty Integration Failed", err.Error())
 		return
@@ -222,7 +226,7 @@ func (r *PagerDutyIntegrationResource) Delete(
 		return
 	}
 
-	if err := r.client.DeletePDIntegration(ctx); err != nil {
+	if err := r.data.Client.DeletePDIntegration(ctx, r.data.AccountID); err != nil {
 		resp.Diagnostics.AddError("Delete PagerDuty Integration Failed", err.Error())
 	}
 }
@@ -231,14 +235,9 @@ func (r *PagerDutyIntegrationResource) ImportState(
 	ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse,
 ) {
 	// Singleton resource — import ID is ignored, we just read the integration.
-	pd, err := r.client.GetPDIntegration(ctx)
+	pd, err := r.data.Client.GetPDIntegration(ctx, r.data.AccountID)
 	if err != nil {
 		resp.Diagnostics.AddError("Import PagerDuty Integration Failed", err.Error())
-		return
-	}
-	if pd == nil {
-		resp.Diagnostics.AddError("PagerDuty Integration Not Found",
-			"No PagerDuty integration exists for this account")
 		return
 	}
 
@@ -251,7 +250,7 @@ func (r *PagerDutyIntegrationResource) ImportState(
 
 func pdToState(
 	ctx context.Context,
-	pd *client.PDIntegration,
+	pd *oack.PDIntegration,
 	state *PagerDutyIntegrationResourceModel,
 	diags *diag.Diagnostics,
 ) {

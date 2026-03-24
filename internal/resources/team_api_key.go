@@ -11,7 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
+	oack "github.com/oack-io/oack-go"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 )
 
 var (
@@ -20,7 +21,7 @@ var (
 )
 
 type TeamAPIKeyResource struct {
-	client *client.Client
+	data *providerdata.Data
 }
 
 type TeamAPIKeyResourceModel struct {
@@ -101,13 +102,13 @@ func (r *TeamAPIKeyResource) Configure(
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+			fmt.Sprintf("Expected *providerdata.Data, got: %T", req.ProviderData))
 		return
 	}
-	r.client = c
+	r.data = c
 }
 
 func (r *TeamAPIKeyResource) Create(
@@ -119,7 +120,7 @@ func (r *TeamAPIKeyResource) Create(
 		return
 	}
 
-	createReq := &client.CreateTeamAPIKeyRequest{
+	createReq := &oack.CreateTeamAPIKeyParams{
 		Name: plan.Name.ValueString(),
 	}
 	if !plan.ExpiresAt.IsNull() && !plan.ExpiresAt.IsUnknown() {
@@ -127,7 +128,7 @@ func (r *TeamAPIKeyResource) Create(
 		createReq.ExpiresAt = &v
 	}
 
-	result, err := r.client.CreateTeamAPIKey(ctx, plan.TeamID.ValueString(), createReq)
+	result, err := r.data.Client.CreateTeamAPIKey(ctx, plan.TeamID.ValueString(), createReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Create Team API Key Failed", err.Error())
 		return
@@ -152,13 +153,13 @@ func (r *TeamAPIKeyResource) Read(
 		return
 	}
 
-	apiKey, err := r.client.GetTeamAPIKey(ctx, state.TeamID.ValueString(), state.ID.ValueString())
+	apiKey, err := getTeamAPIKey(ctx, r.data.Client, state.TeamID.ValueString(), state.ID.ValueString())
 	if err != nil {
+		if oack.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Read Team API Key Failed", err.Error())
-		return
-	}
-	if apiKey == nil {
-		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -192,7 +193,7 @@ func (r *TeamAPIKeyResource) Delete(
 		return
 	}
 
-	if err := r.client.DeleteTeamAPIKey(ctx,
+	if err := r.data.Client.DeleteTeamAPIKey(ctx,
 		state.TeamID.ValueString(), state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Delete Team API Key Failed", err.Error())
 	}
@@ -210,14 +211,9 @@ func (r *TeamAPIKeyResource) ImportState(
 	}
 	teamID, keyID := parts[0], parts[1]
 
-	apiKey, err := r.client.GetTeamAPIKey(ctx, teamID, keyID)
+	apiKey, err := getTeamAPIKey(ctx, r.data.Client, teamID, keyID)
 	if err != nil {
 		resp.Diagnostics.AddError("Import Team API Key Failed", err.Error())
-		return
-	}
-	if apiKey == nil {
-		resp.Diagnostics.AddError("Team API Key Not Found",
-			fmt.Sprintf("API key %s not found in team %s", keyID, teamID))
 		return
 	}
 
@@ -235,4 +231,20 @@ func (r *TeamAPIKeyResource) ImportState(
 		state.ExpiresAt = types.StringNull()
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+// getTeamAPIKey lists all API keys for a team and returns the one matching keyID.
+func getTeamAPIKey(
+	ctx context.Context, c *oack.Client, teamID, keyID string,
+) (*oack.TeamAPIKey, error) {
+	keys, err := c.ListTeamAPIKeys(ctx, teamID)
+	if err != nil {
+		return nil, err
+	}
+	for _, k := range keys {
+		if k.ID == keyID {
+			return &k, nil
+		}
+	}
+	return nil, &oack.APIError{StatusCode: 404, Message: "team API key not found"}
 }

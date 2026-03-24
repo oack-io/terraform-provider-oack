@@ -8,13 +8,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 )
 
 var _ datasource.DataSource = &CheckersDataSource{}
 
 type CheckersDataSource struct {
-	client *client.Client
+	data *providerdata.Data
 }
 
 type CheckersDataSourceModel struct {
@@ -70,17 +70,17 @@ func (d *CheckersDataSource) Configure(
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected DataSource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+			fmt.Sprintf("Expected *providerdata.Data, got: %T", req.ProviderData))
 		return
 	}
-	d.client = c
+	d.data = c
 }
 
 func (d *CheckersDataSource) Read(ctx context.Context, _ datasource.ReadRequest, resp *datasource.ReadResponse) {
-	checkers, err := d.client.ListCheckers(ctx)
+	checkers, err := d.data.Client.ListCheckers(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Read Checkers Failed", err.Error())
 		return

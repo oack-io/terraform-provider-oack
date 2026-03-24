@@ -15,7 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
+	oack "github.com/oack-io/oack-go"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 )
 
 var (
@@ -24,7 +25,7 @@ var (
 )
 
 type ExternalLinkResource struct {
-	client *client.Client
+	data *providerdata.Data
 }
 
 type ExternalLinkResourceModel struct {
@@ -111,13 +112,13 @@ func (r *ExternalLinkResource) Configure(
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+			fmt.Sprintf("Expected *providerdata.Data, got: %T", req.ProviderData))
 		return
 	}
-	r.client = c
+	r.data = c
 }
 
 func (r *ExternalLinkResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -127,8 +128,8 @@ func (r *ExternalLinkResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	link, err := r.client.CreateExternalLink(ctx, plan.TeamID.ValueString(),
-		&client.CreateExternalLinkRequest{
+	link, err := r.data.Client.CreateExternalLink(ctx, plan.TeamID.ValueString(),
+		&oack.CreateExternalLinkParams{
 			Name:              plan.Name.ValueString(),
 			URLTemplate:       plan.URLTemplate.ValueString(),
 			IconURL:           plan.IconURL.ValueString(),
@@ -150,13 +151,13 @@ func (r *ExternalLinkResource) Read(ctx context.Context, req resource.ReadReques
 		return
 	}
 
-	link, err := r.client.GetExternalLink(ctx, state.TeamID.ValueString(), state.ID.ValueString())
+	link, err := r.data.Client.GetExternalLink(ctx, state.TeamID.ValueString(), state.ID.ValueString())
 	if err != nil {
+		if oack.IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError("Read External Link Failed", err.Error())
-		return
-	}
-	if link == nil {
-		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -177,9 +178,9 @@ func (r *ExternalLinkResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	link, err := r.client.UpdateExternalLink(ctx,
+	link, err := r.data.Client.UpdateExternalLink(ctx,
 		state.TeamID.ValueString(), state.ID.ValueString(),
-		&client.CreateExternalLinkRequest{
+		&oack.CreateExternalLinkParams{
 			Name:              plan.Name.ValueString(),
 			URLTemplate:       plan.URLTemplate.ValueString(),
 			IconURL:           plan.IconURL.ValueString(),
@@ -201,7 +202,7 @@ func (r *ExternalLinkResource) Delete(ctx context.Context, req resource.DeleteRe
 		return
 	}
 
-	if err := r.client.DeleteExternalLink(ctx,
+	if err := r.data.Client.DeleteExternalLink(ctx,
 		state.TeamID.ValueString(), state.ID.ValueString()); err != nil {
 		resp.Diagnostics.AddError("Delete External Link Failed", err.Error())
 	}
@@ -219,14 +220,9 @@ func (r *ExternalLinkResource) ImportState(
 	}
 	teamID, linkID := parts[0], parts[1]
 
-	link, err := r.client.GetExternalLink(ctx, teamID, linkID)
+	link, err := r.data.Client.GetExternalLink(ctx, teamID, linkID)
 	if err != nil {
 		resp.Diagnostics.AddError("Import External Link Failed", err.Error())
-		return
-	}
-	if link == nil {
-		resp.Diagnostics.AddError("External Link Not Found",
-			fmt.Sprintf("Link %s not found in team %s", linkID, teamID))
 		return
 	}
 
@@ -235,7 +231,7 @@ func (r *ExternalLinkResource) ImportState(
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func linkToState(link *client.ExternalLink, state *ExternalLinkResourceModel) {
+func linkToState(link *oack.ExternalLink, state *ExternalLinkResourceModel) {
 	state.ID = types.StringValue(link.ID)
 	state.TeamID = types.StringValue(link.TeamID)
 	state.Name = types.StringValue(link.Name)

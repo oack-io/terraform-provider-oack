@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	"github.com/oack-io/terraform-provider-oack/internal/client"
+	"github.com/oack-io/terraform-provider-oack/internal/providerdata"
 )
 
 var (
@@ -20,7 +20,7 @@ var (
 )
 
 type MonitorAlertChannelLinkResource struct {
-	client *client.Client
+	data *providerdata.Data
 }
 
 type MonitorAlertChannelLinkModel struct {
@@ -77,13 +77,13 @@ func (r *MonitorAlertChannelLinkResource) Configure(
 	if req.ProviderData == nil {
 		return
 	}
-	c, ok := req.ProviderData.(*client.Client)
+	c, ok := req.ProviderData.(*providerdata.Data)
 	if !ok {
 		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+			fmt.Sprintf("Expected *providerdata.Data, got: %T", req.ProviderData))
 		return
 	}
-	r.client = c
+	r.data = c
 }
 
 func (r *MonitorAlertChannelLinkResource) Create(
@@ -95,7 +95,7 @@ func (r *MonitorAlertChannelLinkResource) Create(
 		return
 	}
 
-	if err := r.client.LinkMonitorChannel(ctx,
+	if err := r.data.Client.LinkMonitorChannel(ctx,
 		plan.TeamID.ValueString(),
 		plan.MonitorID.ValueString(),
 		plan.ChannelID.ValueString(),
@@ -116,7 +116,7 @@ func (r *MonitorAlertChannelLinkResource) Read(
 		return
 	}
 
-	channelIDs, err := r.client.ListMonitorChannels(ctx,
+	channelIDs, err := r.data.Client.ListMonitorChannels(ctx,
 		state.TeamID.ValueString(), state.MonitorID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Read Monitor Channels Failed", err.Error())
@@ -156,7 +156,7 @@ func (r *MonitorAlertChannelLinkResource) Delete(
 		return
 	}
 
-	if err := r.client.UnlinkMonitorChannel(ctx,
+	if err := r.data.Client.UnlinkMonitorChannel(ctx,
 		state.TeamID.ValueString(),
 		state.MonitorID.ValueString(),
 		state.ChannelID.ValueString(),
