@@ -43,5 +43,4 @@ output:
   sort-order:
     - file
 
-run:
-  go: "1.24"
+run: {}
