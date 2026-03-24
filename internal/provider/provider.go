@@ -99,6 +99,13 @@ func (p *OackProvider) Resources(_ context.Context) []func() resource.Resource {
 		resources.NewMonitorResource,
 		resources.NewAlertChannelResource,
 		resources.NewMonitorAlertChannelLinkResource,
+		resources.NewStatusPageResource,
+		resources.NewStatusPageComponentGroupResource,
+		resources.NewStatusPageComponentResource,
+		resources.NewStatusPageWatchdogResource,
+		resources.NewExternalLinkResource,
+		resources.NewPagerDutyIntegrationResource,
+		resources.NewTeamAPIKeyResource,
 	}
 }
 
