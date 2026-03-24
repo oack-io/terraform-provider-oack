@@ -97,6 +97,8 @@ func (p *OackProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		resources.NewTeamResource,
 		resources.NewMonitorResource,
+		resources.NewAlertChannelResource,
+		resources.NewMonitorAlertChannelLinkResource,
 	}
 }
 

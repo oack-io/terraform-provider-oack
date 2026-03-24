@@ -320,3 +320,145 @@ func (c *Client) ListCheckers(ctx context.Context) ([]Checker, error) {
 	}
 	return checkers, nil
 }
+
+// ── Alert Channels ───────────────────────────────────────────────────────────
+
+type AlertChannel struct {
+	ID            string            `json:"id"`
+	TeamID        string            `json:"team_id"`
+	Type          string            `json:"type"`
+	Name          string            `json:"name"`
+	Config        map[string]string `json:"config"`
+	Enabled       bool              `json:"enabled"`
+	EmailVerified bool              `json:"email_verified"`
+	Scope         string            `json:"scope"`
+	CreatedAt     string            `json:"created_at"`
+	UpdatedAt     string            `json:"updated_at"`
+}
+
+type CreateAlertChannelRequest struct {
+	Type    string            `json:"type"`
+	Name    string            `json:"name"`
+	Config  map[string]string `json:"config"`
+	Enabled *bool             `json:"enabled,omitempty"`
+}
+
+func (c *Client) CreateAlertChannel(ctx context.Context, teamID string, req *CreateAlertChannelRequest) (*AlertChannel, error) {
+	body, status, err := c.do(ctx, http.MethodPost,
+		"/api/v1/teams/"+teamID+"/alert-channels", req)
+	if err != nil {
+		return nil, err
+	}
+	if status >= 300 {
+		return nil, parseError(status, body)
+	}
+	var ch AlertChannel
+	if err := json.Unmarshal(body, &ch); err != nil {
+		return nil, fmt.Errorf("unmarshal alert channel: %w", err)
+	}
+	return &ch, nil
+}
+
+func (c *Client) GetAlertChannel(ctx context.Context, teamID, channelID string) (*AlertChannel, error) {
+	// List all and find — the API doesn't have a get-by-id endpoint for team channels.
+	channels, err := c.ListAlertChannels(ctx, teamID)
+	if err != nil {
+		return nil, err
+	}
+	for _, ch := range channels {
+		if ch.ID == channelID {
+			return &ch, nil
+		}
+	}
+	return nil, nil
+}
+
+func (c *Client) ListAlertChannels(ctx context.Context, teamID string) ([]AlertChannel, error) {
+	body, status, err := c.do(ctx, http.MethodGet,
+		"/api/v1/teams/"+teamID+"/alert-channels", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status >= 300 {
+		return nil, parseError(status, body)
+	}
+	var channels []AlertChannel
+	if err := json.Unmarshal(body, &channels); err != nil {
+		return nil, fmt.Errorf("unmarshal alert channels: %w", err)
+	}
+	return channels, nil
+}
+
+func (c *Client) UpdateAlertChannel(ctx context.Context, teamID, channelID string, req *CreateAlertChannelRequest) (*AlertChannel, error) {
+	body, status, err := c.do(ctx, http.MethodPut,
+		"/api/v1/teams/"+teamID+"/alert-channels/"+channelID, req)
+	if err != nil {
+		return nil, err
+	}
+	if status >= 300 {
+		return nil, parseError(status, body)
+	}
+	var ch AlertChannel
+	if err := json.Unmarshal(body, &ch); err != nil {
+		return nil, fmt.Errorf("unmarshal alert channel: %w", err)
+	}
+	return &ch, nil
+}
+
+func (c *Client) DeleteAlertChannel(ctx context.Context, teamID, channelID string) error {
+	body, status, err := c.do(ctx, http.MethodDelete,
+		"/api/v1/teams/"+teamID+"/alert-channels/"+channelID, nil)
+	if err != nil {
+		return err
+	}
+	if status >= 300 {
+		return parseError(status, body)
+	}
+	return nil
+}
+
+// ── Monitor-Channel Links ────────────────────────────────────────────────────
+
+func (c *Client) LinkMonitorChannel(ctx context.Context, teamID, monitorID, channelID string) error {
+	body, status, err := c.do(ctx, http.MethodPost,
+		"/api/v1/teams/"+teamID+"/monitors/"+monitorID+"/channels/"+channelID, nil)
+	if err != nil {
+		return err
+	}
+	if status >= 300 {
+		return parseError(status, body)
+	}
+	return nil
+}
+
+func (c *Client) UnlinkMonitorChannel(ctx context.Context, teamID, monitorID, channelID string) error {
+	body, status, err := c.do(ctx, http.MethodDelete,
+		"/api/v1/teams/"+teamID+"/monitors/"+monitorID+"/channels/"+channelID, nil)
+	if err != nil {
+		return err
+	}
+	if status >= 300 {
+		return parseError(status, body)
+	}
+	return nil
+}
+
+type MonitorChannelsResponse struct {
+	ChannelIDs []string `json:"channel_ids"`
+}
+
+func (c *Client) ListMonitorChannels(ctx context.Context, teamID, monitorID string) ([]string, error) {
+	body, status, err := c.do(ctx, http.MethodGet,
+		"/api/v1/teams/"+teamID+"/monitors/"+monitorID+"/channels", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status >= 300 {
+		return nil, parseError(status, body)
+	}
+	var resp MonitorChannelsResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("unmarshal monitor channels: %w", err)
+	}
+	return resp.ChannelIDs, nil
+}
