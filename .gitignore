@@ -6,3 +6,6 @@ dist/
 .terraform.lock.hcl
 crash.log
 *.tfplan
+.env
+/main.tf
+/variables.tf
