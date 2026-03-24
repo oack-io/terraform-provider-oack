@@ -36,7 +36,7 @@ output:
     - file
 
 run:
-  go: "1.26"
+  go: "1.24"
 
 issues:
   exclude-dirs:
