@@ -1,0 +1,489 @@
+package resources
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/float64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/oack-io/terraform-provider-oack/internal/client"
+)
+
+var (
+	_ resource.Resource                = &MonitorResource{}
+	_ resource.ResourceWithImportState = &MonitorResource{}
+)
+
+type MonitorResource struct {
+	client *client.Client
+}
+
+type MonitorResourceModel struct {
+	ID                      types.String  `tfsdk:"id"`
+	TeamID                  types.String  `tfsdk:"team_id"`
+	Name                    types.String  `tfsdk:"name"`
+	URL                     types.String  `tfsdk:"url"`
+	Status                  types.String  `tfsdk:"status"`
+	CheckIntervalMs         types.Int64   `tfsdk:"check_interval_ms"`
+	TimeoutMs               types.Int64   `tfsdk:"timeout_ms"`
+	HTTPMethod              types.String  `tfsdk:"http_method"`
+	HTTPVersion             types.String  `tfsdk:"http_version"`
+	Headers                 types.Map     `tfsdk:"headers"`
+	FollowRedirects         types.Bool    `tfsdk:"follow_redirects"`
+	AllowedStatusCodes      types.List    `tfsdk:"allowed_status_codes"`
+	FailureThreshold        types.Int64   `tfsdk:"failure_threshold"`
+	LatencyThresholdMs      types.Int64   `tfsdk:"latency_threshold_ms"`
+	SSLExpiryEnabled        types.Bool    `tfsdk:"ssl_expiry_enabled"`
+	SSLExpiryThresholds     types.List    `tfsdk:"ssl_expiry_thresholds"`
+	DomainExpiryEnabled     types.Bool    `tfsdk:"domain_expiry_enabled"`
+	DomainExpiryThresholds  types.List    `tfsdk:"domain_expiry_thresholds"`
+	UptimeThresholdGood     types.Float64 `tfsdk:"uptime_threshold_good"`
+	UptimeThresholdDegraded types.Float64 `tfsdk:"uptime_threshold_degraded"`
+	UptimeThresholdCritical types.Float64 `tfsdk:"uptime_threshold_critical"`
+	CheckerRegion           types.String  `tfsdk:"checker_region"`
+	CheckerCountry          types.String  `tfsdk:"checker_country"`
+	ResolveOverrideIP       types.String  `tfsdk:"resolve_override_ip"`
+	HealthStatus            types.String  `tfsdk:"health_status"`
+	CreatedAt               types.String  `tfsdk:"created_at"`
+	UpdatedAt               types.String  `tfsdk:"updated_at"`
+}
+
+func NewMonitorResource() resource.Resource {
+	return &MonitorResource{}
+}
+
+func (r *MonitorResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_monitor"
+}
+
+func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Description: "Manages an Oack uptime monitor.",
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Description: "Monitor UUID.",
+				Computed:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+			"team_id": schema.StringAttribute{
+				Description: "Team UUID.",
+				Required:    true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"name": schema.StringAttribute{
+				Description: "Monitor display name.",
+				Required:    true,
+			},
+			"url": schema.StringAttribute{
+				Description: "URL to monitor.",
+				Required:    true,
+			},
+			"status": schema.StringAttribute{
+				Description: "Monitor status: active or paused.",
+				Optional:    true,
+				Computed:    true,
+				Default:     stringdefault.StaticString("active"),
+			},
+			"check_interval_ms": schema.Int64Attribute{
+				Description: "Check interval in milliseconds (min 30000).",
+				Optional:    true,
+				Computed:    true,
+				Default:     int64default.StaticInt64(60000),
+			},
+			"timeout_ms": schema.Int64Attribute{
+				Description: "Request timeout in milliseconds.",
+				Optional:    true,
+				Computed:    true,
+				Default:     int64default.StaticInt64(10000),
+			},
+			"http_method": schema.StringAttribute{
+				Description: "HTTP method: GET, POST, PUT, PATCH, DELETE, HEAD.",
+				Optional:    true,
+				Computed:    true,
+				Default:     stringdefault.StaticString("GET"),
+			},
+			"http_version": schema.StringAttribute{
+				Description: "HTTP version: empty (auto), 1.1, or 2.",
+				Optional:    true,
+				Computed:    true,
+				Default:     stringdefault.StaticString(""),
+			},
+			"headers": schema.MapAttribute{
+				Description: "Custom request headers.",
+				Optional:    true,
+				ElementType: types.StringType,
+			},
+			"follow_redirects": schema.BoolAttribute{
+				Description: "Follow HTTP redirects.",
+				Optional:    true,
+				Computed:    true,
+				Default:     booldefault.StaticBool(true),
+			},
+			"allowed_status_codes": schema.ListAttribute{
+				Description: "Allowed status codes (e.g. 2xx, 200, 404).",
+				Optional:    true,
+				ElementType: types.StringType,
+			},
+			"failure_threshold": schema.Int64Attribute{
+				Description: "Consecutive failures before marking down.",
+				Optional:    true,
+				Computed:    true,
+				Default:     int64default.StaticInt64(3),
+			},
+			"latency_threshold_ms": schema.Int64Attribute{
+				Description: "Latency threshold in ms (0 = disabled).",
+				Optional:    true,
+				Computed:    true,
+				Default:     int64default.StaticInt64(0),
+			},
+			"ssl_expiry_enabled": schema.BoolAttribute{
+				Description: "Monitor SSL certificate expiry.",
+				Optional:    true,
+				Computed:    true,
+				Default:     booldefault.StaticBool(true),
+			},
+			"ssl_expiry_thresholds": schema.ListAttribute{
+				Description: "Days before SSL expiry to alert.",
+				Optional:    true,
+				ElementType: types.Int64Type,
+			},
+			"domain_expiry_enabled": schema.BoolAttribute{
+				Description: "Monitor domain expiry.",
+				Optional:    true,
+				Computed:    true,
+				Default:     booldefault.StaticBool(true),
+			},
+			"domain_expiry_thresholds": schema.ListAttribute{
+				Description: "Days before domain expiry to alert.",
+				Optional:    true,
+				ElementType: types.Int64Type,
+			},
+			"uptime_threshold_good": schema.Float64Attribute{
+				Description: "Uptime percentage for good status.",
+				Optional:    true,
+				Computed:    true,
+				Default:     float64default.StaticFloat64(99.9),
+			},
+			"uptime_threshold_degraded": schema.Float64Attribute{
+				Description: "Uptime percentage for degraded status.",
+				Optional:    true,
+				Computed:    true,
+				Default:     float64default.StaticFloat64(99.0),
+			},
+			"uptime_threshold_critical": schema.Float64Attribute{
+				Description: "Uptime percentage for critical status.",
+				Optional:    true,
+				Computed:    true,
+				Default:     float64default.StaticFloat64(95.0),
+			},
+			"checker_region": schema.StringAttribute{
+				Description: "Preferred checker region.",
+				Optional:    true,
+				Computed:    true,
+				Default:     stringdefault.StaticString(""),
+			},
+			"checker_country": schema.StringAttribute{
+				Description: "Preferred checker country.",
+				Optional:    true,
+				Computed:    true,
+				Default:     stringdefault.StaticString(""),
+			},
+			"resolve_override_ip": schema.StringAttribute{
+				Description: "Override DNS resolution (IPv4/IPv6).",
+				Optional:    true,
+				Computed:    true,
+				Default:     stringdefault.StaticString(""),
+			},
+			"health_status": schema.StringAttribute{
+				Description: "Current health status (up/down). Read-only.",
+				Computed:    true,
+			},
+			"created_at": schema.StringAttribute{
+				Description: "Creation timestamp (RFC 3339).",
+				Computed:    true,
+			},
+			"updated_at": schema.StringAttribute{
+				Description: "Last update timestamp (RFC 3339).",
+				Computed:    true,
+			},
+		},
+	}
+}
+
+func (r *MonitorResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	c, ok := req.ProviderData.(*client.Client)
+	if !ok {
+		resp.Diagnostics.AddError("Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *client.Client, got: %T", req.ProviderData))
+		return
+	}
+	r.client = c
+}
+
+func (r *MonitorResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan MonitorResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	apiReq := planToCreateRequest(ctx, &plan, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	monitor, err := r.client.CreateMonitor(ctx, plan.TeamID.ValueString(), apiReq)
+	if err != nil {
+		resp.Diagnostics.AddError("Create Monitor Failed", err.Error())
+		return
+	}
+
+	monitorToState(ctx, monitor, &plan, &resp.Diagnostics)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *MonitorResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state MonitorResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	monitor, err := r.client.GetMonitor(ctx, state.TeamID.ValueString(), state.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Read Monitor Failed", err.Error())
+		return
+	}
+	if monitor == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	monitorToState(ctx, monitor, &state, &resp.Diagnostics)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+func (r *MonitorResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan MonitorResourceModel
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var state MonitorResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	apiReq := planToCreateRequest(ctx, &plan, &resp.Diagnostics)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	monitor, err := r.client.UpdateMonitor(ctx, state.TeamID.ValueString(), state.ID.ValueString(), apiReq)
+	if err != nil {
+		resp.Diagnostics.AddError("Update Monitor Failed", err.Error())
+		return
+	}
+
+	monitorToState(ctx, monitor, &plan, &resp.Diagnostics)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
+}
+
+func (r *MonitorResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state MonitorResourceModel
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if err := r.client.DeleteMonitor(ctx, state.TeamID.ValueString(), state.ID.ValueString()); err != nil {
+		resp.Diagnostics.AddError("Delete Monitor Failed", err.Error())
+		return
+	}
+}
+
+func (r *MonitorResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Import ID format: team_id/monitor_id
+	parts := strings.SplitN(req.ID, "/", 2)
+	if len(parts) != 2 {
+		resp.Diagnostics.AddError("Invalid Import ID",
+			"Expected format: team_id/monitor_id")
+		return
+	}
+	teamID, monitorID := parts[0], parts[1]
+
+	monitor, err := r.client.GetMonitor(ctx, teamID, monitorID)
+	if err != nil {
+		resp.Diagnostics.AddError("Import Monitor Failed", err.Error())
+		return
+	}
+	if monitor == nil {
+		resp.Diagnostics.AddError("Monitor Not Found",
+			fmt.Sprintf("Monitor %s not found in team %s", monitorID, teamID))
+		return
+	}
+
+	var state MonitorResourceModel
+	monitorToState(ctx, monitor, &state, &resp.Diagnostics)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+func planToCreateRequest(ctx context.Context, plan *MonitorResourceModel, diags *diag.Diagnostics) *client.CreateMonitorRequest {
+	req := &client.CreateMonitorRequest{
+		Name:            plan.Name.ValueString(),
+		URL:             plan.URL.ValueString(),
+		CheckIntervalMs: plan.CheckIntervalMs.ValueInt64(),
+		TimeoutMs:       plan.TimeoutMs.ValueInt64(),
+		HTTPMethod:      plan.HTTPMethod.ValueString(),
+		HTTPVersion:     plan.HTTPVersion.ValueString(),
+		Status:          plan.Status.ValueString(),
+		CheckerRegion:   plan.CheckerRegion.ValueString(),
+		CheckerCountry:  plan.CheckerCountry.ValueString(),
+		ResolveOverrideIP: plan.ResolveOverrideIP.ValueString(),
+	}
+
+	fr := plan.FollowRedirects.ValueBool()
+	req.FollowRedirects = &fr
+
+	ft := int(plan.FailureThreshold.ValueInt64())
+	req.FailureThreshold = ft
+
+	lt := int(plan.LatencyThresholdMs.ValueInt64())
+	req.LatencyThresholdMs = lt
+
+	ssl := plan.SSLExpiryEnabled.ValueBool()
+	req.SSLExpiryEnabled = &ssl
+
+	dom := plan.DomainExpiryEnabled.ValueBool()
+	req.DomainExpiryEnabled = &dom
+
+	utg := plan.UptimeThresholdGood.ValueFloat64()
+	req.UptimeThresholdGood = &utg
+
+	utd := plan.UptimeThresholdDegraded.ValueFloat64()
+	req.UptimeThresholdDegraded = &utd
+
+	utc := plan.UptimeThresholdCritical.ValueFloat64()
+	req.UptimeThresholdCritical = &utc
+
+	if !plan.Headers.IsNull() && !plan.Headers.IsUnknown() {
+		headers := make(map[string]string)
+		diags.Append(plan.Headers.ElementsAs(ctx, &headers, false)...)
+		req.Headers = headers
+	}
+
+	if !plan.AllowedStatusCodes.IsNull() && !plan.AllowedStatusCodes.IsUnknown() {
+		var codes []string
+		diags.Append(plan.AllowedStatusCodes.ElementsAs(ctx, &codes, false)...)
+		req.AllowedStatusCodes = codes
+	}
+
+	if !plan.SSLExpiryThresholds.IsNull() && !plan.SSLExpiryThresholds.IsUnknown() {
+		var thresholds []int
+		var int64s []int64
+		diags.Append(plan.SSLExpiryThresholds.ElementsAs(ctx, &int64s, false)...)
+		for _, v := range int64s {
+			thresholds = append(thresholds, int(v))
+		}
+		req.SSLExpiryThresholds = thresholds
+	}
+
+	if !plan.DomainExpiryThresholds.IsNull() && !plan.DomainExpiryThresholds.IsUnknown() {
+		var int64s []int64
+		diags.Append(plan.DomainExpiryThresholds.ElementsAs(ctx, &int64s, false)...)
+		thresholds := make([]int, len(int64s))
+		for i, v := range int64s {
+			thresholds[i] = int(v)
+		}
+		req.DomainExpiryThresholds = thresholds
+	}
+
+	return req
+}
+
+func monitorToState(ctx context.Context, m *client.Monitor, state *MonitorResourceModel, diags *diag.Diagnostics) {
+	state.ID = types.StringValue(m.ID)
+	state.TeamID = types.StringValue(m.TeamID)
+	state.Name = types.StringValue(m.Name)
+	state.URL = types.StringValue(m.URL)
+	state.Status = types.StringValue(m.Status)
+	state.CheckIntervalMs = types.Int64Value(m.CheckIntervalMs)
+	state.TimeoutMs = types.Int64Value(m.TimeoutMs)
+	state.HTTPMethod = types.StringValue(m.HTTPMethod)
+	state.HTTPVersion = types.StringValue(m.HTTPVersion)
+	state.FollowRedirects = types.BoolValue(m.FollowRedirects)
+	state.FailureThreshold = types.Int64Value(int64(m.FailureThreshold))
+	state.LatencyThresholdMs = types.Int64Value(int64(m.LatencyThresholdMs))
+	state.SSLExpiryEnabled = types.BoolValue(m.SSLExpiryEnabled)
+	state.DomainExpiryEnabled = types.BoolValue(m.DomainExpiryEnabled)
+	state.UptimeThresholdGood = types.Float64Value(m.UptimeThresholdGood)
+	state.UptimeThresholdDegraded = types.Float64Value(m.UptimeThresholdDegraded)
+	state.UptimeThresholdCritical = types.Float64Value(m.UptimeThresholdCritical)
+	state.CheckerRegion = types.StringValue(m.CheckerRegion)
+	state.CheckerCountry = types.StringValue(m.CheckerCountry)
+	state.ResolveOverrideIP = types.StringValue(m.ResolveOverrideIP)
+	state.HealthStatus = types.StringValue(m.HealthStatus)
+	state.CreatedAt = types.StringValue(m.CreatedAt)
+	state.UpdatedAt = types.StringValue(m.UpdatedAt)
+
+	if m.Headers != nil {
+		headers, d := types.MapValueFrom(ctx, types.StringType, m.Headers)
+		diags.Append(d...)
+		state.Headers = headers
+	} else {
+		state.Headers = types.MapNull(types.StringType)
+	}
+
+	if m.AllowedStatusCodes != nil {
+		codes, d := types.ListValueFrom(ctx, types.StringType, m.AllowedStatusCodes)
+		diags.Append(d...)
+		state.AllowedStatusCodes = codes
+	} else {
+		state.AllowedStatusCodes = types.ListNull(types.StringType)
+	}
+
+	if m.SSLExpiryThresholds != nil {
+		int64s := make([]int64, len(m.SSLExpiryThresholds))
+		for i, v := range m.SSLExpiryThresholds {
+			int64s[i] = int64(v)
+		}
+		thresholds, d := types.ListValueFrom(ctx, types.Int64Type, int64s)
+		diags.Append(d...)
+		state.SSLExpiryThresholds = thresholds
+	} else {
+		state.SSLExpiryThresholds = types.ListNull(types.Int64Type)
+	}
+
+	if m.DomainExpiryThresholds != nil {
+		int64s := make([]int64, len(m.DomainExpiryThresholds))
+		for i, v := range m.DomainExpiryThresholds {
+			int64s[i] = int64(v)
+		}
+		thresholds, d := types.ListValueFrom(ctx, types.Int64Type, int64s)
+		diags.Append(d...)
+		state.DomainExpiryThresholds = thresholds
+	} else {
+		state.DomainExpiryThresholds = types.ListNull(types.Int64Type)
+	}
+}
