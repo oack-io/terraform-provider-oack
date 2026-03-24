@@ -30,7 +30,7 @@ resource "oack_team" "engineering" {
 resource "oack_monitor" "api" {
   team_id           = oack_team.engineering.id
   name              = "API"
-  url               = "https://api.example.com/healthz"
+  url               = "https://httpbin.org/status/200"
   check_interval_ms = 30000
   failure_threshold = 3
 }

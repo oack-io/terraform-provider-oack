@@ -34,7 +34,7 @@ locals {
 resource "oack_monitor" "api" {
   team_id           = local.engineering_team.id
   name              = "API"
-  url               = "https://api.example.com/healthz"
+  url               = "https://httpbin.org/status/200"
   check_interval_ms = 60000
 }
 ```

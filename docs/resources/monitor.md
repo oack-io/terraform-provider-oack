@@ -16,7 +16,7 @@ from distributed checker nodes and report health status.
 resource "oack_monitor" "api" {
   team_id           = oack_team.engineering.id
   name              = "API Health Check"
-  url               = "https://api.example.com/healthz"
+  url               = "https://httpbin.org/status/200"
   check_interval_ms = 30000
   timeout_ms        = 10000
   http_method       = "GET"

@@ -7,13 +7,13 @@ variable "slack_webhook_url" {
 variable "api_monitor_url" {
   description = "URL to monitor for the API health check"
   type        = string
-  default     = "https://api.example.com/healthz"
+  default     = "https://httpbin.org/status/200"
 }
 
 variable "web_monitor_url" {
   description = "URL to monitor for the website"
   type        = string
-  default     = "https://www.example.com"
+  default     = "https://httpbin.org/html"
 }
 
 variable "grafana_base_url" {

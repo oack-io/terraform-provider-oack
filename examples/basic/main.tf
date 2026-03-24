@@ -25,7 +25,7 @@ resource "oack_team" "prod" {
 resource "oack_monitor" "api" {
   team_id           = oack_team.prod.id
   name              = "API Health"
-  url               = "https://api.example.com/health"
+  url               = "https://httpbin.org/status/200"
   check_interval_ms = 60000
   timeout_ms        = 10000
   failure_threshold = 3
