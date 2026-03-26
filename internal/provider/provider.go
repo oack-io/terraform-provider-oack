@@ -109,6 +109,7 @@ func (p *OackProvider) Resources(_ context.Context) []func() resource.Resource {
 		resources.NewExternalLinkResource,
 		resources.NewPagerDutyIntegrationResource,
 		resources.NewTeamAPIKeyResource,
+		resources.NewAccountAPIKeyResource,
 	}
 }
 

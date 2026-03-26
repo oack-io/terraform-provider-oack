@@ -7,8 +7,10 @@ require (
 	github.com/hashicorp/terraform-plugin-framework-validators v0.19.0
 	github.com/hashicorp/terraform-plugin-go v0.31.0
 	github.com/hashicorp/terraform-plugin-testing v1.15.0
-	github.com/oack-io/oack-go v0.1.0
+	github.com/oack-io/oack-go v0.1.1-0.20260327000000-aa4fc76
 )
+
+replace github.com/oack-io/oack-go => /Users/gkomissarov/docs/vcs/public/oack-go
 
 require (
 	github.com/ProtonMail/go-crypto v1.3.0 // indirect

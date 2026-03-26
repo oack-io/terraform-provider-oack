@@ -61,6 +61,7 @@ type MonitorResourceModel struct {
 	CheckerCountry          types.String  `tfsdk:"checker_country"`
 	ResolveOverrideIP       types.String  `tfsdk:"resolve_override_ip"`
 	HealthStatus            types.String  `tfsdk:"health_status"`
+	Type                    types.String  `tfsdk:"type"`
 	CreatedAt               types.String  `tfsdk:"created_at"`
 	UpdatedAt               types.String  `tfsdk:"updated_at"`
 }
@@ -268,6 +269,18 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"type": schema.StringAttribute{
+				Description: "Monitor type: http or browser.",
+				Optional:    true,
+				Computed:    true,
+				Default:     stringdefault.StaticString("http"),
+				Validators: []validator.String{
+					stringvalidator.OneOf("http", "browser"),
+				},
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
 			"created_at": schema.StringAttribute{
 				Description: "Creation timestamp (RFC 3339).",
 				Computed:    true,
@@ -424,6 +437,7 @@ func planToCreateRequest(
 		CheckerRegion:     plan.CheckerRegion.ValueString(),
 		CheckerCountry:    plan.CheckerCountry.ValueString(),
 		ResolveOverrideIP: plan.ResolveOverrideIP.ValueString(),
+		Type:              plan.Type.ValueString(),
 	}
 
 	fr := plan.FollowRedirects.ValueBool()
@@ -507,6 +521,7 @@ func monitorToState(ctx context.Context, m *oack.Monitor, state *MonitorResource
 	state.CheckerCountry = types.StringValue(m.CheckerCountry)
 	state.ResolveOverrideIP = types.StringValue(m.ResolveOverrideIP)
 	state.HealthStatus = types.StringValue(m.HealthStatus)
+	state.Type = types.StringValue(m.Type)
 	state.CreatedAt = types.StringValue(m.CreatedAt)
 	state.UpdatedAt = types.StringValue(m.UpdatedAt)
 
