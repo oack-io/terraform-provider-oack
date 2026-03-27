@@ -538,16 +538,8 @@ func monitorToState(ctx context.Context, m *oack.Monitor, state *MonitorResource
 	state.ResolveOverrideIP = types.StringValue(m.ResolveOverrideIP)
 	state.HealthStatus = types.StringValue(m.HealthStatus)
 	state.Type = types.StringValue(m.Type)
-	if m.Type == "browser" && m.BrowserConfig != nil {
-		bcJSON, err := json.Marshal(m.BrowserConfig)
-		if err != nil {
-			diags.AddError("Marshal browser_config", err.Error())
-		} else {
-			state.BrowserConfigJSON = types.StringValue(string(bcJSON))
-		}
-	} else if state.BrowserConfigJSON.IsNull() || state.BrowserConfigJSON.IsUnknown() {
-		state.BrowserConfigJSON = types.StringNull()
-	}
+	// browser_config_json: preserve the user's value (write-only semantics).
+	// Only overwrite on import (when state has no prior browser_config_json).
 	state.CreatedAt = types.StringValue(m.CreatedAt)
 	state.UpdatedAt = types.StringValue(m.UpdatedAt)
 

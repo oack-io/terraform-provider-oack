@@ -28,7 +28,7 @@ npx playwright install chromium
 
 ### Create a local test harness
 
-Create `test-local.js` — a thin wrapper that sets up the same globals your
+Create `test-local.js` — a thin wrapper that sets up the same environment your
 script will have in the Oack sandbox:
 
 ```js
@@ -36,45 +36,22 @@ script will have in the Oack sandbox:
 const { chromium } = require("playwright");
 
 (async () => {
-  // Set environment variables (same as script_env in Terraform).
-  const LOGIN_EMAIL = process.env.LOGIN_EMAIL || "test@example.com";
-  const LOGIN_PASSWORD = process.env.LOGIN_PASSWORD || "s3cret";
-
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
+  const browserContext = await browser.newContext({
     viewport: { width: 1920, height: 1080 },
   });
-  const page = await context.newPage();
+  const page = await browserContext.newPage();
+
+  // Build the context object with env vars (same as Oack's script_env).
+  const context = {
+    LOGIN_EMAIL: process.env.LOGIN_EMAIL || "test@example.com",
+    LOGIN_PASSWORD: process.env.LOGIN_PASSWORD || "s3cret",
+  };
 
   try {
-    // Make env vars available as globals (matches Oack sandbox behavior).
-    await page.evaluate(
-      ([email, password]) => {
-        globalThis.LOGIN_EMAIL = email;
-        globalThis.LOGIN_PASSWORD = password;
-      },
-      [LOGIN_EMAIL, LOGIN_PASSWORD]
-    );
-
-    // Run the check script in the page context.
-    // Note: in production, Oack runs the script in a Node.js sandbox with
-    // `page` and `context` as globals. Locally, we just inline the steps.
-
-    // --- Paste your check.js steps here, or use eval: ---
-    await page.goto("https://app.example.com/login");
-    await page.fill('input[name="email"]', LOGIN_EMAIL);
-    await page.fill('input[name="password"]', LOGIN_PASSWORD);
-    await page.click('button[type="submit"]');
-    await page.waitForURL("**/dashboard", { timeout: 10000 });
-
-    const heading = await page.textContent("h1");
-    if (!heading || !heading.includes("Dashboard")) {
-      throw new Error(`Expected "Dashboard" heading, got: "${heading}"`);
-    }
-
-    await page.waitForSelector('[data-testid="revenue-widget"]', {
-      timeout: 5000,
-    });
+    // Load and run the check script — same call signature as the sandbox.
+    const checkFn = require("./check.js");
+    await checkFn(page, context);
 
     console.log("PASS: Login flow completed successfully");
   } catch (err) {
