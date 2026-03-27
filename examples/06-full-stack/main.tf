@@ -187,9 +187,9 @@ resource "oack_status_page_watchdog" "website" {
 # ─── External Link (Grafana) ─────────────────────────────────────────────────
 
 resource "oack_external_link" "grafana" {
-  team_id            = oack_team.engineering.id
-  name               = "Grafana Dashboard"
-  url_template       = "${var.grafana_base_url}/d/uptime?from=now-{{.TimeWindow}}&to=now"
+  team_id             = oack_team.engineering.id
+  name                = "Grafana Dashboard"
+  url_template        = "${var.grafana_base_url}/d/uptime?from=now-{{.TimeWindow}}&to=now"
   time_window_minutes = 60
 }
 

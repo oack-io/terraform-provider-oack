@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -62,6 +63,7 @@ type MonitorResourceModel struct {
 	ResolveOverrideIP       types.String  `tfsdk:"resolve_override_ip"`
 	HealthStatus            types.String  `tfsdk:"health_status"`
 	Type                    types.String  `tfsdk:"type"`
+	BrowserConfigJSON       types.String  `tfsdk:"browser_config_json"`
 	CreatedAt               types.String  `tfsdk:"created_at"`
 	UpdatedAt               types.String  `tfsdk:"updated_at"`
 }
@@ -281,6 +283,11 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
+			"browser_config_json": schema.StringAttribute{
+				Description: "Browser monitor configuration as JSON. Only used when type = browser. " +
+					"See docs for the full BrowserConfig schema (screenshot, viewport, script, steps, etc.).",
+				Optional: true,
+			},
 			"created_at": schema.StringAttribute{
 				Description: "Creation timestamp (RFC 3339).",
 				Computed:    true,
@@ -496,6 +503,15 @@ func planToCreateRequest(
 		req.DomainExpiryThresholds = thresholds
 	}
 
+	if !plan.BrowserConfigJSON.IsNull() && !plan.BrowserConfigJSON.IsUnknown() {
+		var bc oack.BrowserConfig
+		if err := json.Unmarshal([]byte(plan.BrowserConfigJSON.ValueString()), &bc); err != nil {
+			diags.AddError("Invalid browser_config_json", err.Error())
+			return nil
+		}
+		req.BrowserConfig = &bc
+	}
+
 	return req
 }
 
@@ -522,6 +538,16 @@ func monitorToState(ctx context.Context, m *oack.Monitor, state *MonitorResource
 	state.ResolveOverrideIP = types.StringValue(m.ResolveOverrideIP)
 	state.HealthStatus = types.StringValue(m.HealthStatus)
 	state.Type = types.StringValue(m.Type)
+	if m.Type == "browser" && m.BrowserConfig != nil {
+		bcJSON, err := json.Marshal(m.BrowserConfig)
+		if err != nil {
+			diags.AddError("Marshal browser_config", err.Error())
+		} else {
+			state.BrowserConfigJSON = types.StringValue(string(bcJSON))
+		}
+	} else if state.BrowserConfigJSON.IsNull() || state.BrowserConfigJSON.IsUnknown() {
+		state.BrowserConfigJSON = types.StringNull()
+	}
 	state.CreatedAt = types.StringValue(m.CreatedAt)
 	state.UpdatedAt = types.StringValue(m.UpdatedAt)
 
