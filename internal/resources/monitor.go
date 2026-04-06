@@ -298,9 +298,6 @@ func (r *MonitorResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"updated_at": schema.StringAttribute{
 				Description: "Last update timestamp (RFC 3339).",
 				Computed:    true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
 			},
 		},
 	}
