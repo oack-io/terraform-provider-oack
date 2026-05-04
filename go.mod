@@ -1,6 +1,6 @@
 module github.com/oack-io/terraform-provider-oack
 
-go 1.26.1
+go 1.26.2
 
 require (
 	github.com/hashicorp/terraform-plugin-framework v1.19.0
